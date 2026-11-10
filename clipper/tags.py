@@ -100,10 +100,16 @@ def credit(rec: dict, platform: str, cfg: Config | None = None) -> str:
     return f"🎥 {name}" + (f" on {where}" if where else "")
 
 
+def _music_line(rec: dict) -> list[str]:
+    m = rec.get("music")
+    return [m["credit"]] if isinstance(m, dict) and m.get("credit") else []
+
+
 def instagram_caption(rec: dict, cfg: Config | None = None) -> str:
     me = _cfg_get(cfg, "instagram_handle", default="@gummybearclips")
     cta = _pick(IG_CTAS, rec.get("key", rec["title"])).format(me=me)
-    parts = [rec["title"], "", credit(rec, "instagram", cfg), cta, "", " ".join(hashtags(rec, "instagram", cfg))]
+    parts = [rec["title"], "", credit(rec, "instagram", cfg), *_music_line(rec), cta, "",
+             " ".join(hashtags(rec, "instagram", cfg))]
     return "\n".join(parts).strip()
 
 
@@ -116,7 +122,8 @@ def youtube_title(rec: dict) -> str:
 
 def youtube_description(rec: dict, cfg: Config | None = None) -> str:
     cta = _pick(YT_CTAS, rec.get("key", rec["title"]))
-    parts = [rec["title"], "", credit(rec, "youtube", cfg), cta, "", " ".join(hashtags(rec, "youtube", cfg))]
+    parts = [rec["title"], "", credit(rec, "youtube", cfg), *_music_line(rec), cta, "",
+             " ".join(hashtags(rec, "youtube", cfg))]
     return "\n".join(parts).strip()
 
 

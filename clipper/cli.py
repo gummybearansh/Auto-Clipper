@@ -104,6 +104,61 @@ def review(
     do_review(Path(d), cfg, only_pending=pending)
 
 
+PLIST = Path("~/Library/LaunchAgents/com.gummybear.autoclipper.plist").expanduser()
+
+
+@app.command()
+def service(action: str = typer.Argument("status", help="install | uninstall | status | restart")):
+    """Run the dashboard as a background service: starts at login, restarts if it crashes (macOS)."""
+    import os
+    import subprocess
+    from .config import ROOT
+    label, uid = "com.gummybear.autoclipper", os.getuid()
+    exe = ROOT / ".venv" / "bin" / "clipper"
+    logs = ROOT / "out" / "_logs"
+    if action == "install":
+        logs.mkdir(parents=True, exist_ok=True)
+        PLIST.parent.mkdir(parents=True, exist_ok=True)
+        PLIST.write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>{label}</string>
+  <key>ProgramArguments</key><array><string>{exe}</string><string>ui</string><string>--no-open</string></array>
+  <key>WorkingDirectory</key><string>{ROOT}</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>{logs}/ui.log</string>
+  <key>StandardErrorPath</key><string>{logs}/ui.log</string>
+</dict></plist>
+""")
+        subprocess.run(["launchctl", "bootout", f"gui/{uid}/{label}"], capture_output=True)
+        r = subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", str(PLIST)], capture_output=True, text=True)
+        if r.returncode:
+            raise typer.Exit(console.print(f"[red]launchctl failed:[/red] {r.stderr}") or 1)
+        console.print(f"[green]✓[/green] service installed — dashboard at http://localhost:8765, logs in {logs}/ui.log")
+    elif action == "uninstall":
+        subprocess.run(["launchctl", "bootout", f"gui/{uid}/{label}"], capture_output=True)
+        PLIST.unlink(missing_ok=True)
+        console.print("[green]✓[/green] service removed")
+    elif action == "restart":
+        subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/{label}"])
+        console.print("[green]✓[/green] restarted")
+    else:
+        r = subprocess.run(["launchctl", "print", f"gui/{uid}/{label}"], capture_output=True, text=True)
+        state = next((l.strip() for l in r.stdout.splitlines() if l.strip().startswith("state =")), "not installed")
+        console.print(f"service: {state}")
+
+
+@app.command()
+def music(config: Optional[Path] = typer.Option(None, "--config", "-c")):
+    """Download the curated background-music tracks (Kevin MacLeod, CC BY 4.0) into assets/music/."""
+    from .music import download
+    n = download(load_config(config), log=lambda m: console.print(f"[dim]› {m}[/dim]"))
+    console.print(f"[green]✓[/green] {n} tracks ready")
+
+
 @app.command()
 def post(
     clip_json: Path = typer.Argument(..., exists=True, help="out/<id>/chunk_XX/clip_YY.json"),

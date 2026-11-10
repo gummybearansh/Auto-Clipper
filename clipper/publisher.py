@@ -33,7 +33,47 @@ class Publisher:
         self.st.setdefault("manual", [])          # clip keys waiting to be posted
         self.st.setdefault("campaign", None)
         self.st.setdefault("history", [])         # last posts (key, permalink, at, ok/err)
+        crashed = self.st.get("current")
         self.st["current"] = None
+        self.net_down_until = 0.0
+        self._save()
+        self._recover(crashed)
+
+    def _recover(self, crashed: dict | None) -> None:
+        """After a crash/restart: clips stuck in 'posting'/'queued' are reset. A clip that was mid-post is checked
+        against the account's recent Reels first so it's never posted twice."""
+        recent = None
+        for jp in self.root.glob("*/chunk_*/clip_[0-9][0-9].json"):
+            try:
+                r = read_json(jp)
+            except Exception:
+                continue
+            if r.get("post_state") not in ("posting", "queued"):
+                continue
+            key = str(jp.relative_to(self.root).with_suffix(""))
+            if r["post_state"] == "posting":
+                if recent is None:
+                    try:
+                        from . import instagram as ig
+                        recent = ig.recent_captions(20)
+                    except Exception:
+                        recent = []
+                hit = next((m for m in recent if (m.get("caption") or "").split("\n")[0].strip() == r["title"].strip()), None)
+                if hit:
+                    r.setdefault("posts", {})["instagram"] = {"media_id": hit["id"], "permalink": hit.get("permalink", ""),
+                                                              "at": time.strftime("%Y-%m-%d %H:%M"), "recovered": True}
+                    log(f"recovered post after restart: {r['title']} → {hit.get('permalink')}")
+            r.pop("post_state", None)
+            write_json(jp, r)
+            if key in self.st["manual"] and r.get("posts", {}).get("instagram"):
+                self.st["manual"].remove(key)
+        # manual queue survives restarts: re-flag what's still waiting
+        for key in list(self.st["manual"]):
+            jp = self._jp(key)
+            if jp.exists():
+                r = read_json(jp)
+                r["post_state"] = "queued"
+                write_json(jp, r)
         self._save()
 
     # ------------------------------------------------------------------ state
@@ -125,6 +165,8 @@ class Publisher:
                 self.wake.clear()
 
     def _tick(self) -> bool:
+        if time.time() < self.net_down_until:
+            return False
         with self.lock:
             key = self.st["manual"].pop(0) if self.st["manual"] else None
             camp = self.st.get("campaign")
@@ -149,7 +191,11 @@ class Publisher:
             if c:
                 if ok:
                     c["posted"] += 1
-                c["next_at"] = time.time() + c["interval"] + random.uniform(0, 20)
+                    c["next_at"] = time.time() + c["interval"] + random.uniform(0, 20)
+                elif time.time() < self.net_down_until:
+                    c["next_at"] = self.net_down_until          # offline: retry as soon as we're back
+                else:
+                    c["next_at"] = time.time() + 30              # this clip failed: move on to the next one soon
                 if c["posted"] >= c["target"]:
                     c["active"] = False
                     c["paused_reason"] = "done"
@@ -176,12 +222,40 @@ class Publisher:
                     self.st["current"]["stage"] = s
 
         try:
+            # a previous attempt timed out / lost the network → it may have gone through: check before re-posting
+            prev = (rec.get("post_error") or "").lower()
+            if "network" in prev or "timed out" in prev:
+                hit = next((m for m in ig.recent_captions(20)
+                            if (m.get("caption") or "").split("\n")[0].strip() == rec["title"].strip()), None)
+                if hit:
+                    rec = read_json(jp)
+                    rec.setdefault("posts", {})["instagram"] = {"media_id": hit["id"], "permalink": hit.get("permalink", ""),
+                                                                "at": time.strftime("%Y-%m-%d %H:%M"), "recovered": True}
+                    rec.pop("post_state", None)
+                    rec.pop("post_error", None)
+                    write_json(jp, rec)
+                    log(f"already on Instagram (earlier attempt went through): {rec['title']}")
+                    return True
             # stay safely under Instagram's 24h publishing limit
             lim = ig.publishing_limit()
             used, total = lim.get("quota_usage", 0), (lim.get("config") or {}).get("quota_total", 100)
             if used >= total - 2:
                 raise ig.IGError(f"rate limit: {used}/{total} posts used in the last 24h")
-            res = ig.publish_reel(jp.parent / rec["output"], instagram_caption(rec, self.cfg), progress=prog)
+            box: dict = {}
+
+            def work():
+                try:
+                    box["res"] = ig.publish_reel(jp.parent / rec["output"], instagram_caption(rec, self.cfg), progress=prog)
+                except BaseException as e:  # noqa: BLE001
+                    box["err"] = e
+            t = threading.Thread(target=work, daemon=True)
+            t.start()
+            t.join(15 * 60)                 # hard deadline: a hung upload (e.g. across sleep) can't freeze the queue
+            if t.is_alive():
+                raise ig.NetError("post timed out (network stalled — laptop asleep?)")
+            if "err" in box:
+                raise box["err"]
+            res = box["res"]
             rec = read_json(jp)
             rec.setdefault("posts", {})["instagram"] = {**res, "at": time.strftime("%Y-%m-%d %H:%M")}
             rec.pop("post_state", None)
@@ -194,6 +268,21 @@ class Publisher:
         except Exception as e:
             msg = str(e)[:300]
             rec = read_json(jp)
+            if isinstance(e, ig.NetError):
+                # not the clip's fault: put it back, wait for the network, and try again
+                rec.pop("post_state", None)
+                rec["post_error"] = msg
+                write_json(jp, rec)
+                self.net_down_until = time.time() + 60
+                log(f"Instagram unreachable ({msg}); retrying in 60s")
+                with self.lock:
+                    if manual and key not in self.st["manual"]:
+                        self.st["manual"].insert(0, key)
+                        rec["post_state"] = "queued"
+                        write_json(jp, rec)
+                    self.st["history"].append({"key": key, "title": rec["title"], "error": msg, "at": time.time(),
+                                               "ok": False, "manual": manual, "net": True})
+                return False
             rec["post_state"] = "failed"
             rec["post_error"] = msg
             rec["post_error_count"] = rec.get("post_error_count", 0) + 1

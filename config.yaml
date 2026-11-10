@@ -106,3 +106,10 @@ publish:
   #  jasontheween: {instagram: "@jasontheween", youtube: "@jasontheween"}
   extra_tags: {}
   #  jasontheween: [jason]
+
+music:
+  enabled: true
+  max_score: 2.0            # clips scoring below this get quiet background music (Kevin MacLeod, CC BY 4.0)
+  dir: assets/music         # `clipper music` downloads the curated tracks here
+  volume_db: -19            # quiet bed — the stream audio stays clearly audible
+  duck: true                # music dips further whenever someone talks

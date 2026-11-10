@@ -33,6 +33,10 @@ class IGError(RuntimeError):
     pass
 
 
+class NetError(IGError):
+    """No network / timeout — not the clip's fault; retry later."""
+
+
 # ------------------------------------------------------------------ creds
 def load() -> dict:
     return json.loads(CRED.read_text()) if CRED.exists() else {}
@@ -62,11 +66,17 @@ def _call(method: str, url: str, params: dict | None = None, data: bytes | None 
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
+        raw = e.read() or b""
         try:
-            err = json.loads(e.read()).get("error", {})
+            body = json.loads(raw)
         except Exception:
-            err = {"message": str(e)}
-        raise IGError(f"{err.get('message', 'error')} (code {err.get('code')}, sub {err.get('error_subcode')})") from None
+            body = {}
+        err = body.get("error") or body.get("debug_info") or {}
+        msg = (err.get("error_user_msg") or err.get("message") or err.get("type")
+               or raw.decode("utf-8", "replace")[:200] or f"HTTP {e.code}")
+        raise IGError(f"{msg} (HTTP {e.code}, code {err.get('code')}, sub {err.get('error_subcode')})") from None
+    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+        raise NetError(f"network: {e}") from None
 
 
 def get(path: str, **params) -> dict:
@@ -160,6 +170,11 @@ def publishing_limit() -> dict:
     return d[0] if d else {}
 
 
+def recent_captions(n: int = 15) -> list[dict]:
+    ig, tok = _ctx()
+    return get(f"{ig}/media", fields="id,caption,permalink,timestamp", limit=n, access_token=tok).get("data", [])
+
+
 def publish_reel(video: Path, caption: str, share_to_feed: bool = True, progress=None,
                  timeout: int = 600) -> dict:
     """Upload + publish a Reel. Returns {"media_id", "permalink"}."""
@@ -172,7 +187,7 @@ def publish_reel(video: Path, caption: str, share_to_feed: bool = True, progress
                 share_to_feed="true" if share_to_feed else "false", access_token=tok)
     cid, uri = cont["id"], cont.get("uri") or f"https://rupload.facebook.com/ig-api-upload/{API}/{cont['id']}"
     progress(f"uploading {size / 1e6:.0f} MB")
-    r = _call("POST", uri, data=video.read_bytes(), timeout=600,
+    r = _call("POST", uri, data=video.read_bytes(), timeout=180,
               headers={"Authorization": f"OAuth {tok}", "offset": "0", "file_size": str(size)})
     if not r.get("success", True):
         raise IGError(f"upload failed: {r}")

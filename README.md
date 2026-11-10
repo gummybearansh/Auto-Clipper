@@ -28,7 +28,7 @@ Drop in a **Twitch VOD, a live Twitch channel, or a YouTube video** and Auto-Cli
 4. **Cuts the best moments** with build-up before the peak and payoff after, snapped to natural pauses
 5. **Re-frames to 9:16** automatically: facecam-on-top split for gaming, face-tracked crop for IRL, smart fallback when there's no cam
 6. **Burns in captions**: a tilted *sticker* hook title (🔥 or 😭) plus word-by-word running captions with the current word highlighted
-7. **Adds sparse SFX**: an outro sting plus a hit on the biggest peak, with the stream audio ducked underneath
+7. **Adds sparse SFX**: an outro sting plus a hit on the biggest peak, with the stream audio ducked underneath. Weaker clips (score < 2) also get a **quiet CC-licensed music bed** matched to the mood, which dips whenever someone speaks
 8. **Exports** every clip to a Desktop folder with a ready-to-paste **caption + hashtags** for Instagram and YouTube Shorts
 9. Optionally **publishes to Instagram** as a Reel through the official Graph API
 
@@ -135,6 +135,8 @@ Or straight from the terminal:
 | `clipper post <clip.json>` | publish one clip to Instagram as a Reel |
 | `clipper export` | (re)build the Desktop export folders |
 | `clipper cleanup` | delete heavy chunk files that are already clipped |
+| `clipper music` | download the background-music tracks |
+| `clipper service install` | run the dashboard in the background, auto-start at login |
 
 ---
 
@@ -196,6 +198,26 @@ asr:   { backend: whisper, model: small }        # or --asr deepgram with DEEPGR
 clip:  { min_len: 15, max_len: 60 }
 ```
 
+## 🎵 Background music
+
+Clips scoring below `music.max_score` (default 2.0) get a quiet music bed, about 15 dB under the voice, which ducks further whenever anyone talks:
+
+| Mood | Tracks (Kevin MacLeod · incompetech.com · CC BY 4.0) |
+|---|---|
+| 😭 funny / chaos | Monkeys Spinning Monkeys · Sneaky Snitch · Fluffing a Duck · Scheming Weasel · Pixel Peeker Polka · Run Amok · Local Forecast · Investigations · Itty Bitty 8 Bit · Carefree |
+| 🔥 hype | Hitman · Volatile Reaction · Exhilarate · Movement Proposition · Funkorama · Pamgaea · Rhinoceros |
+
+Run `clipper music` once to download them. The required attribution line is added to every caption automatically.
+
+## 🛟 Reliability
+
+- **Everything persists**: jobs, chunk progress and the posting queue live on disk and resume after a restart
+- **`clipper service install`** runs the dashboard as a macOS launch agent: it starts at login and restarts on crash
+- The server holds a `caffeinate` assertion so the Mac doesn't idle-sleep mid-job
+- Network drops (sleep, Wi-Fi) are retried automatically with backoff and never count against a clip
+- Every post has a hard deadline, and an interrupted post is checked against the account's recent Reels so nothing is posted twice
+- Renders are written atomically, so a clip is never published half-encoded
+
 ## ⚡ Performance
 
 On an Apple M5 MacBook (16 GB), each 30-minute chunk takes about **8–9 minutes end to end**:
@@ -222,7 +244,7 @@ clipper/
   score.py · segment.py                combine signals → peaks → windows → NMS
   layout.py                            YuNet faces, overlay-box detection, per-clip 9:16 plan
   titles.py · captions.py · tags.py    hooks + emoji, ASS / Pillow captions, captions & hashtags
-  sfx.py · render.py                   sparse SFX + ducking, ffmpeg assembly
+  sfx.py · music.py · render.py        sparse SFX, CC music beds + sidechain ducking, ffmpeg assembly
   export.py · cleanup.py                Desktop export, disk cleanup
   instagram.py · publisher.py          Reels publishing, one-click posts + auto-post campaigns
 CONTEXT.md                             the original design doc

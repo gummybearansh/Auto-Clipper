@@ -79,8 +79,24 @@ def render_clip(clip: dict, clip_dir: Path, out_path: Path, cfg: Config) -> Path
         chain += ",loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000"
     chain += f",volume='{_duck_expr(hits, cfg.sfx.duck_db)}':eval=frame"
     chain += f",afade=t=out:st={max(0, dur - 0.4):.3f}:d=0.4"
-    fg.append(f"{a0}{chain}[asrc]")
+    from .music import pick, track_path
+    mus = pick(cfg, clip)
+    clip["music"] = mus if mus else clip.get("music") if clip.get("music") is False else None
+    if mus:
+        fg.append(f"{a0}{chain},asplit=2[asrc][scin]")
+    else:
+        fg.append(f"{a0}{chain}[asrc]")
     mix = ["[asrc]"]
+    if mus:
+        inputs += ["-stream_loop", "-1", "-ss", f"{mus['offset']:.2f}", "-i", str(track_path(cfg, mus["title"]))]
+        mchain = (f"[{n_in}:a]atrim=0:{dur:.3f},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,"
+                  f"volume={cfg.music.volume_db}dB,afade=t=in:d=0.8,afade=t=out:st={max(0, dur - 1.5):.3f}:d=1.5")
+        if cfg.music.duck:
+            fg.append(f"{mchain}[mraw];[mraw][scin]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=450[mbed]")
+        else:
+            fg.append(f"{mchain}[mbed];[scin]anullsink")
+        mix.append("[mbed]")
+        n_in += 1
     for i, h in enumerate(hits):
         inputs += ["-i", h["file"]]
         ms = int(h["t"] * 1000)
@@ -101,9 +117,11 @@ def render_clip(clip: dict, clip_dir: Path, out_path: Path, cfg: Config) -> Path
            "-c:v", "libx264", "-preset", cfg.render.preset, "-crf", str(cfg.render.crf),
            "-profile:v", "high", "-pix_fmt", "yuv420p", "-r", str(fps),
            "-c:a", "aac", "-b:a", cfg.render.audio_bitrate, "-ar", "48000",
-           "-t", f"{dur:.3f}", "-movflags", "+faststart", str(out_path)]
+           "-t", f"{dur:.3f}", "-movflags", "+faststart", str(out_path.with_suffix(".rendering.mp4"))]
     (clip_dir / "ffmpeg_cmd.txt").write_text(" ".join(f"'{c}'" if (" " in c or ";" in c) else c for c in cmd))
     run(cmd)
+    import os
+    os.replace(out_path.with_suffix(".rendering.mp4"), out_path)
     make_thumb(out_path, clip)
     return out_path
 

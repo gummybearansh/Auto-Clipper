@@ -225,10 +225,20 @@ def create_app(cfg: Config) -> FastAPI:
     return app
 
 
+def _keep_awake() -> None:
+    """Hold a macOS 'no idle sleep' assertion for as long as this server runs (lid-close still sleeps)."""
+    import os
+    import shutil
+    if sys.platform == "darwin" and shutil.which("caffeinate"):
+        subprocess.Popen(["caffeinate", "-i", "-s", "-w", str(os.getpid())],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def serve(cfg: Config, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
     import threading
     import uvicorn
     import webbrowser
+    _keep_awake()
     app = create_app(cfg)
     url = f"http://{host}:{port}"
     if open_browser:

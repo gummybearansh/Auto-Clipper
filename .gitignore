@@ -13,3 +13,6 @@ assets/sfx/
 
 # local agent settings
 .pi/
+
+# background music (downloaded by `clipper music`)
+assets/music/

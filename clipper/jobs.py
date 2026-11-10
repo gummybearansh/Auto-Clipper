@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .cleanup import cleanup_chunk, cleanup_full, fmt_bytes
 from .config import Config
-from .download import Remote, fetch_chunk, refresh, resolve
+from .download import Remote, chunk_dir, fetch_chunk, refresh, resolve
 from .pipeline import CHUNK_SECONDS, clips_for, process_source, rerender
 from .utils import Cancelled, fmt_ts, log, read_json, set_cancel_check, set_log_hook, write_json
 
@@ -106,7 +106,7 @@ class JobManager:
         with self.lock:
             j = self.jobs.get(jid)
             if j and j["status"] in ("failed", "cancelled", "done"):
-                j.update(status="queued", stage="queued", error=None)
+                j.update(status="queued", stage="queued", error=None, retry_at=0, auto_retries=0)
                 for c in j["chunks"]:
                     if c["status"] in ("failed", "running"):
                         c["status"] = "pending"
@@ -134,7 +134,8 @@ class JobManager:
         with self.lock:
             now = time.time()
             ready = [j for j in self.jobs.values()
-                     if j["status"] == "queued" or (j["status"] == "waiting" and now >= j.get("next_check", 0))]
+                     if (j["status"] == "queued" and now >= j.get("retry_at", 0))
+                     or (j["status"] == "waiting" and now >= j.get("next_check", 0))]
             return min(ready, key=lambda j: (j["status"] == "waiting", j["created"])) if ready else None
 
     def _loop(self) -> None:
@@ -217,7 +218,7 @@ class JobManager:
                 if freed:
                     logline(f"freed {fmt_bytes(freed)} (full download deleted)")
             with self.lock:
-                j.update(status="done", stage=f"done — {j['clips']} clips")
+                j.update(status="done", stage=f"done — {j['clips']} clips", auto_retries=0)
                 self._save(j)
         except Cancelled:
             logline("cancelled")
@@ -239,8 +240,20 @@ class JobManager:
                 return
             logline(f"ERROR: {e}")
             traceback.print_exc()
+            text = f"{type(e).__name__}: {e}".lower()
+            netty = any(w in text for w in ("urlopen", "timed out", "timeout", "connection", "network", "nodename",
+                                            "temporary failure", "unable to download", "http error 5", "eof"))
             with self.lock:
-                j.update(status="failed", stage="failed", error=str(e)[:800])
+                tries = j.get("auto_retries", 0)
+                if netty and tries < 8:   # network blip (sleep, wifi): retry automatically with backoff
+                    wait = min(1800, 60 * 2 ** tries)
+                    j.update(status="queued", stage=f"network problem — retrying in {wait // 60} min",
+                             auto_retries=tries + 1, retry_at=time.time() + wait, error=str(e)[:300])
+                    for c in j["chunks"]:
+                        if c["status"] == "running":
+                            c["status"] = "pending"
+                else:
+                    j.update(status="failed", stage="failed", error=str(e)[:800])
                 self._save(j)
         finally:
             self.cancel.discard(jid)
@@ -263,6 +276,16 @@ class JobManager:
 
     def _run_chunk(self, j: dict, remote: Remote, c: dict, stage, checkpoint) -> None:
         n = len(j["chunks"])
+        done_dir = chunk_dir(self.cfg.path(self.cfg.out_dir), remote.video_id, c["idx"])
+        if (done_dir / "index.json").exists():
+            have = len(list(done_dir.glob("clip_[0-9][0-9].json")))
+            if have >= c["target"] or not (done_dir / "work" / "source.mp4").exists():
+                with self.lock:          # already clipped earlier (e.g. job re-added) — don't re-download
+                    c.update(status="done", clips=have, stage="done")
+                    j["clips"] = sum(x["clips"] for x in j["chunks"])
+                    self._save(j)
+                stage(f"chunk {c['idx']}/{n}: already clipped ({have} clips)")
+                return
         label = f"chunk {c['idx']}/{n} [{fmt_ts(c['start'])}–{fmt_ts(c['end'])}]"
         with self.lock:
             c["status"] = "running"

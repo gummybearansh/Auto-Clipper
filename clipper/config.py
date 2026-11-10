@@ -112,6 +112,14 @@ class PublishCfg(BaseModel):
     extra_tags: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class MusicCfg(BaseModel):
+    enabled: bool = True
+    max_score: float = 2.0         # clips scoring below this get background music
+    dir: str = "assets/music"
+    volume_db: float = -19.0       # music level under the clip (the stream audio stays clearly audible)
+    duck: bool = True              # dip the music further whenever someone talks
+
+
 class Config(BaseModel):
     out_dir: str = "out"
     download: DownloadCfg = DownloadCfg()
@@ -126,6 +134,7 @@ class Config(BaseModel):
     cleanup: CleanupCfg = CleanupCfg()
     export: ExportCfg = ExportCfg()
     publish: PublishCfg = PublishCfg()
+    music: MusicCfg = MusicCfg()
 
     def path(self, p: str) -> Path:
         """Resolve a config path relative to the repo root."""
