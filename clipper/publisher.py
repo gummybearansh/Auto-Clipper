@@ -305,9 +305,11 @@ class Publisher:
                     box["err"] = e
             t = threading.Thread(target=work, daemon=True)
             t.start()
-            t.join(15 * 60)
+            t0 = time.time()                    # wall clock: keeps counting while the Mac sleeps
+            while t.is_alive() and time.time() - t0 < 6 * 60:
+                t.join(5)
             if t.is_alive():
-                raise ig.NetError("post timed out (network stalled — laptop asleep?)")
+                raise ig.NetError("post timed out after 6 min (network stalled — laptop asleep?)")
             if "err" in box:
                 raise box["err"]
             res = box["res"]
