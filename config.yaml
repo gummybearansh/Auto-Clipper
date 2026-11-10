@@ -1,0 +1,108 @@
+# auto-clipper configuration. All values are optional; defaults live in clipper/config.py.
+
+out_dir: out
+
+download:
+  max_height: 1080          # source download resolution cap
+  chat: true                # download Twitch / YouTube chat replay when available
+
+clip:
+  min_len: 15               # seconds
+  max_len: 60
+  pre_peak: [8, 20]         # start this many seconds before the peak (buildup)
+  post_peak: [3, 8]         # end this many seconds after the peak
+  snap_window: 4.0          # max distance (s) to move an edge when snapping to a pause / sentence end
+  min_gap: 0.45             # silence between words (s) that counts as a pause
+
+asr:
+  backend: whisper          # whisper | deepgram (needs DEEPGRAM_API_KEY)
+  model: small              # tiny | base | small | medium | large-v3
+  compute_type: int8
+  language: null            # null = auto-detect
+  # Long VODs: only transcribe the regions around the best candidate peaks (much faster).
+  full_transcript_max_minutes: 30
+  candidate_margin: 30      # seconds of context around each candidate region
+
+signals:
+  chat_offset: 5.0          # chat lags video; shift chat signal back by this many seconds
+  smooth_sigma: 2.0         # gaussian smoothing (s) applied to each normalized signal
+  baseline_window: 120      # rolling baseline (s) used for chat velocity / audio jumps
+  visual_fps: 2             # frame-diff sample rate
+
+weights:
+  twitch:
+    chat: 0.35
+    audio: 0.25
+    emote: 0.15
+    keywords: 0.10
+    speech: 0.10
+    visual: 0.05
+    clip_mentions: 0.10
+  youtube:
+    heatmap: 0.35
+    audio: 0.30
+    keywords: 0.15
+    speech: 0.10
+    visual: 0.10
+    chat: 0.15              # only used if a YouTube live-chat replay exists
+    emote: 0.05
+
+layout:
+  mode: auto                # auto | split | crop | blur
+  facecam_ratio: 0.35       # top share of the canvas for the facecam in split layout
+  fallback: blur            # what to do with no facecam: blur (letterbox on blurred bg) | crop (center crop)
+  fps: 30                   # 30 | 60 (60 is only used when the source is >= 50fps)
+  # Per-streamer facecam presets, in source pixels (x, y, w, h) for a 1920x1080 source; scaled for other sizes.
+  presets: {}
+  #  some_streamer: {facecam: [1500, 20, 400, 300]}
+
+captions:
+  renderer: auto            # auto (libass if ffmpeg has it, else pillow) | ass | pillow
+  font: assets/fonts/Montserrat.ttf
+  font_weight: ExtraBold
+  size: 84
+  # top title = "sticker" (different font + solid label + tilt) so it never reads like the running captions
+  title_size: 76
+  title_font: assets/fonts/Anton-Regular.ttf
+  title_bg: "#FF2E4D"
+  title_color: "#FFFFFF"
+  title_border: "#FFFFFF"
+  title_tilt: 3.0           # degrees counter-clockwise
+  words_per_group: 3
+  max_group_chars: 18
+  color: "#FFFFFF"
+  highlight: "#FFE600"
+  stroke: "#000000"
+  stroke_width: 7
+  uppercase: true
+
+sfx:
+  enabled: true
+  dir: assets/sfx
+  max_mid_hits: 2
+  min_spacing: 10.0         # seconds between hits
+  duck_db: 5.0              # duck source audio under each hit
+  gain_db: -4.0             # sfx level
+
+render:
+  crf: 20
+  preset: medium
+  audio_bitrate: 192k
+  loudnorm: true
+
+cleanup:
+  enabled: true             # after a chunk is clipped, delete its ~2 GB video + audio
+  excerpt_pad: 8            # keep clip ±8s per clip so titles can be edited / bounds nudged later
+
+export:
+  enabled: true             # every finished clip is also placed here, one subfolder per link
+  dir: "~/Desktop/gummybear clips"
+
+publish:
+  instagram_handle: "@gummybearclips"
+  youtube_channel: gummybearclip
+  # credit streamers with their real handles (otherwise "🎥 name on twitch.tv/name")
+  streamer_handles: {}
+  #  jasontheween: {instagram: "@jasontheween", youtube: "@jasontheween"}
+  extra_tags: {}
+  #  jasontheween: [jason]

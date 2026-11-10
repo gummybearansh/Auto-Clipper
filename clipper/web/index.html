@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>auto-clipper</title>
+<style>
+  :root {
+    --bg: #0c0c0d; --panel: #141416; --line: #232327; --line2: #2e2e33;
+    --text: #ececef; --mute: #8b8b93; --dim: #5d5d64;
+    --red: #ff2e4d; --green: #3ddc84; --amber: #ffb020; --blue: #5aa9ff;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: inherit; }
+
+  header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: rgba(12,12,13,.92); backdrop-filter: blur(8px); z-index: 5; }
+  .brand { font-weight: 800; letter-spacing: -.02em; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .brand i { width: 10px; height: 10px; background: var(--red); border-radius: 2px; transform: rotate(-8deg); display: inline-block; }
+  .hstat { color: var(--mute); font-size: 13px; display: flex; gap: 16px; margin-left: auto; font-family: var(--mono); }
+  .hstat b { color: var(--text); font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; background: var(--dim); }
+  .dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(61,220,132,.15); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  main { display: grid; grid-template-columns: 400px 1fr; min-height: calc(100vh - 53px); }
+  aside { border-right: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 20px;
+    position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--mute); margin: 0 0 10px; font-weight: 600; }
+
+  textarea { width: 100%; min-height: 96px; resize: vertical; background: var(--panel); border: 1px solid var(--line2);
+    border-radius: 10px; padding: 12px; outline: none; font-family: var(--mono); font-size: 12.5px; }
+  textarea:focus, input[type=text]:focus, input[type=number]:focus, select:focus { border-color: #4a4a52; }
+  .opts { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; font-size: 13px; color: var(--mute); }
+  .opts label { display: flex; align-items: center; gap: 6px; }
+  input[type=number], select { background: var(--panel); border: 1px solid var(--line2); border-radius: 7px; padding: 5px 8px; outline: none; }
+  input[type=number] { width: 54px; }
+  .btn { background: var(--panel); border: 1px solid var(--line2); border-radius: 8px; padding: 6px 12px; cursor: pointer;
+    transition: background .15s, border-color .15s, transform .05s; white-space: nowrap; }
+  .btn:hover { background: #1c1c20; border-color: #3a3a41; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; padding: 8px 16px; }
+  .btn.primary:hover { background: #ff4762; }
+  .btn.sm { padding: 3px 9px; font-size: 12px; border-radius: 6px; }
+  .btn.ok:hover { border-color: var(--green); color: var(--green); }
+  .btn.no:hover { border-color: var(--red); color: var(--red); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .hint { color: var(--dim); font-size: 12px; margin-top: 8px; }
+
+  .job { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel); margin-bottom: 10px; }
+  .job .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--mute); margin-top: 4px; font-family: var(--mono); }
+  .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line2); color: var(--mute);
+    text-transform: uppercase; letter-spacing: .06em; font-family: var(--mono); }
+  .tag.live { color: #fff; background: var(--red); border-color: var(--red); }
+  .st { font-family: var(--mono); font-size: 11px; }
+  .st.running, .st.resolving { color: var(--blue); } .st.done { color: var(--green); } .st.failed { color: var(--red); }
+  .st.waiting { color: var(--amber); } .st.queued, .st.cancelled { color: var(--mute); }
+  .bar { display: flex; gap: 3px; margin: 10px 0 6px; height: 6px; }
+  .bar span { flex: 1; border-radius: 2px; background: var(--line2); position: relative; overflow: hidden; }
+  .bar span.done { background: var(--green); } .bar span.failed { background: var(--red); }
+  .bar span.running { background: #2b3a52; }
+  .bar span.running::after { content: ""; position: absolute; inset: 0; width: 40%;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent); animation: slide 1.4s infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+  .stage { font-size: 12px; color: var(--mute); font-family: var(--mono); word-break: break-word; }
+  .err { font-size: 12px; color: var(--red); margin-top: 6px; word-break: break-word; }
+  .job .acts { display: flex; gap: 6px; margin-top: 10px; }
+  details { margin-top: 8px; } summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+  pre.log { max-height: 220px; overflow: auto; background: #0e0e10; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px; font-size: 11px; color: var(--mute); white-space: pre-wrap; margin: 6px 0 0; }
+
+  section.clips { padding: 20px 24px 60px; min-width: 0; }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tabs { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+  .tabs button { background: none; border: 0; padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--mute); font-size: 13px; }
+  .tabs button.on { background: #222226; color: var(--text); }
+  .tabs .n { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-left: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+    transition: border-color .2s; }
+  .card.approved { border-color: rgba(61,220,132,.55); }
+  .card.rejected { opacity: .45; }
+  .vwrap { position: relative; aspect-ratio: 9/16; background: #000; }
+  .vwrap video { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .vwrap .busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.6);
+    font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .rank { position: absolute; top: 8px; left: 8px; font-family: var(--mono); font-size: 11px; background: rgba(0,0,0,.65);
+    padding: 2px 6px; border-radius: 5px; }
+  .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ttl { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; margin: -4px -6px 0;
+    font-weight: 600; outline: none; }
+  .ttl:hover { border-color: var(--line2); } .ttl:focus { border-color: #4a4a52; background: #0f0f11; }
+  .cmeta { display: flex; gap: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--mute); flex-wrap: wrap; }
+  .cmeta a { text-decoration: none; border-bottom: 1px dotted var(--dim); }
+  .cmeta .sc { color: var(--text); }
+  .srcname { font-size: 11.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cacts { display: flex; gap: 6px; }
+  .cacts .btn { flex: 1; text-align: center; }
+  .stb { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .stb.approved { color: var(--green); } .stb.rejected { color: var(--red); } .stb.pending { color: var(--amber); }
+  .empty { color: var(--dim); padding: 60px 0; text-align: center; border: 1px dashed var(--line2); border-radius: 14px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i></i>auto-clipper</div>
+  <div class="hstat">
+    <span><span id="wdot" class="dot"></span><span id="wtxt">idle</span></span>
+    <span>clips <b id="c-all">0</b></span>
+    <span>pending <b id="c-pending">0</b></span>
+    <span>approved <b id="c-approved">0</b></span>
+    <a id="igbtn" class="btn sm" href="/auth/instagram/start" style="text-decoration:none">Connect Instagram</a>
+  </div>
+</header>
+<main>
+  <aside>
+    <div>
+      <h2>Add links</h2>
+      <textarea id="urls" placeholder="Paste Twitch / YouTube links, one per line&#10;https://www.twitch.tv/somechannel   (live → from stream start)&#10;https://www.twitch.tv/videos/123…&#10;https://www.youtube.com/watch?v=…"></textarea>
+      <div class="opts">
+        <label>clips / 30 min <input id="per30" type="number" min="1" max="40" value="10"></label>
+        <label>layout <select id="layout"><option>auto</option><option>split</option><option>crop</option><option>blur</option></select></label>
+        <label title="Keep processing a live stream as new 30-minute blocks are recorded"><input id="follow" type="checkbox" checked> follow live</label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="add">Queue</button>
+        <span class="hint" id="addmsg"></span>
+      </div>
+      <div class="hint">Long videos are split into 30-minute chunks and processed one at a time. Clips show up as each chunk finishes.</div>
+    </div>
+    <div>
+      <h2>Jobs</h2>
+      <div id="jobs"></div>
+    </div>
+  </aside>
+  <section class="clips">
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button data-f="all" class="on">All<span class="n" id="n-all"></span></button>
+        <button data-f="pending">Pending<span class="n" id="n-pending"></span></button>
+        <button data-f="approved">Approved<span class="n" id="n-approved"></span></button>
+        <button data-f="rejected">Rejected<span class="n" id="n-rejected"></span></button>
+      </div>
+      <select id="vfilter"><option value="">all videos</option></select>
+      <select id="sort"><option value="new">newest</option><option value="score">top score</option><option value="time">stream time</option></select>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>No clips yet. Paste a link on the left — clips appear here as they render.</div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ts = s => { s = Math.max(0, Math.floor(s||0)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return h ? `${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}` : `${m}:${String(x).padStart(2,"0")}`; };
+const api = (u, body) => fetch(u, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"},
+  body: JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || r.statusText)));
+
+let filter = "all", clips = [], openLogs = new Set();
+
+// ---------------- add
+$("#add").onclick = async () => {
+  const urls = $("#urls").value.trim();
+  if (!urls) return;
+  try {
+    const r = await api("/api/jobs", {urls, per_30: +$("#per30").value || 10, layout: $("#layout").value, follow: $("#follow").checked});
+    $("#urls").value = ""; $("#addmsg").textContent = `queued ${r.added.length}`;
+    setTimeout(() => $("#addmsg").textContent = "", 2500); pollState();
+  } catch (e) { $("#addmsg").textContent = e; }
+};
+$("#urls").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("#add").click(); });
+
+// ---------------- jobs
+function jobHTML(j) {
+  const total = j.chunks.reduce((a, c) => a + (c.end - c.start), 0) || 1;
+  const bar = j.chunks.length ? j.chunks.map(c => `<span class="${c.status}" style="flex:${(c.end-c.start)/total}"
+      title="chunk ${c.idx}: ${ts(c.start)}–${ts(c.end)} · ${c.status} · ${c.clips}/${c.target} clips"></span>`).join("")
+      : `<span class="${j.status === 'resolving' ? 'running' : ''}"></span>`;
+  const done = j.chunks.filter(c => c.status === "done").length;
+  const acts = [];
+  if (j.cancelling) acts.push(`<button class="btn sm" disabled>Cancelling…</button>`);
+  else if (["queued","running","resolving","waiting"].includes(j.status)) acts.push(`<button class="btn sm no" data-op="cancel">${j.status === "waiting" ? "Stop following" : "Cancel"}</button>`);
+  if (["failed","cancelled","done"].includes(j.status)) acts.push(`<button class="btn sm" data-op="retry">${j.status === "done" ? "Re-run" : "Retry"}</button>`);
+  if (j.clips > 0) acts.push(`<button class="btn sm" data-op="open">Open folder</button>`);
+  if (!["running","resolving"].includes(j.status)) acts.push(`<button class="btn sm" data-op="remove">Remove</button>`);
+  return `<div class="job" data-id="${j.id}">
+    <div class="t" title="${esc(j.url)}">${esc(j.title)}</div>
+    <div class="meta">${j.platform ? `<span class="tag">${esc(j.platform)}</span>` : ""}${j.is_live ? `<span class="tag live">live</span>` : ""}
+      <span class="st ${j.status}">${j.status}</span><span>${j.duration ? ts(j.duration) : ""}</span>
+      <span style="margin-left:auto">${j.clips} clips · ${done}/${j.chunks.length || "?"} chunks</span></div>
+    <div class="bar">${bar}</div>
+    <div class="stage">${esc(j.stage || "")}</div>
+    ${j.error ? `<div class="err">${esc(j.error)}</div>` : ""}
+    <div class="acts">${acts.join("")}</div>
+    <details ${openLogs.has(j.id) ? "open" : ""}><summary>log</summary><pre class="log">${esc((j.log||[]).join("\n"))}</pre></details>
+  </div>`;
+}
+$("#jobs").addEventListener("click", async e => {
+  const b = e.target.closest("[data-op]"); if (!b) return;
+  const id = b.closest(".job").dataset.id;
+  if (b.dataset.op === "open") { api(`/api/jobs/${id}/open`, {}).catch(e => alert(e)); return; }
+  b.disabled = true; if (b.dataset.op === "cancel") b.textContent = "Cancelling…";
+  if (b.dataset.op === "remove" && !confirm("Remove this job from the list? (clips stay on disk)")) return;
+  await api(`/api/jobs/${id}/${b.dataset.op}`, {}); pollState();
+});
+$("#jobs").addEventListener("toggle", e => {
+  const id = e.target.closest(".job")?.dataset.id; if (!id) return;
+  e.target.open ? openLogs.add(id) : openLogs.delete(id);
+}, true);
+
+async function pollState() {
+  try {
+    const s = await api("/api/state");
+    const cur = s.jobs.find(j => j.id === s.current);
+    $("#wdot").className = "dot" + (cur ? " on" : "");
+    $("#wtxt").textContent = cur ? `working · ${cur.title.slice(0, 40)}` : (s.jobs.some(j => j.status === "waiting") ? "watching live" : "idle");
+    // keep scroll position of open logs
+    const scrolls = {}; document.querySelectorAll(".job pre.log").forEach(p => scrolls[p.closest(".job").dataset.id] = p.scrollTop + p.clientHeight >= p.scrollHeight - 4 ? -1 : p.scrollTop);
+    $("#jobs").innerHTML = s.jobs.length ? s.jobs.map(jobHTML).join("") : `<div class="hint">No jobs yet.</div>`;
+    document.querySelectorAll(".job pre.log").forEach(p => { const v = scrolls[p.closest(".job").dataset.id]; p.scrollTop = v === undefined || v === -1 ? p.scrollHeight : v; });
+  } catch (e) { $("#wtxt").textContent = "server offline"; $("#wdot").className = "dot"; }
+}
+
+// ---------------- clips
+const cards = new Map();
+function cardEl(c) {
+  const el = document.createElement("div");
+  el.className = "card"; el.dataset.key = c.key;
+  el.innerHTML = `<div class="vwrap"><video preload="none" controls playsinline></video><span class="rank"></span></div>
+    <div class="body">
+      <input class="ttl" title="Edit and press Enter to re-render">
+      <div class="cmeta"><span class="sc"></span><a class="ts" target="_blank" rel="noopener"></a><span class="du"></span><span class="stb"></span></div>
+      <div class="srcname"></div>
+      <div class="cacts"><button class="btn sm ok" data-a="approve">Approve</button><button class="btn sm no" data-a="reject">Reject</button>
+        <button class="btn sm" data-a="reveal" title="Show in Finder">↗</button></div>
+    </div>`;
+  const ttl = el.querySelector(".ttl");
+  ttl.addEventListener("keydown", async e => {
+    if (e.key === "Enter") { e.preventDefault(); ttl.blur();
+      if (ttl.value.trim() && ttl.value.trim() !== el._c.title) { await api("/api/clip", {key: c.key, action: "title", title: ttl.value}); pollClips(); } }
+    if (e.key === "Escape") { ttl.value = el._c.title; ttl.blur(); }
+  });
+  el.querySelector(".cacts").addEventListener("click", async e => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    let a = b.dataset.a;
+    if ((a === "approve" && el._c.status === "approved") || (a === "reject" && el._c.status === "rejected")) a = "pending";
+    await api("/api/clip", {key: el.dataset.key, action: a}); pollClips();
+  });
+  return el;
+}
+function updateCard(el, c) {
+  const prev = el._c; el._c = c;
+  el.className = `card ${c.status}`;
+  const v = el.querySelector("video");
+  if (!prev || prev.media !== c.media) {
+    const swap = () => { v.poster = el._c.poster || ""; v.src = el._c.media; };
+    if (v.paused) swap(); else v.addEventListener("pause", swap, {once: true});
+  }
+  const ttl = el.querySelector(".ttl"); if (document.activeElement !== ttl) ttl.value = c.title;
+  el.querySelector(".rank").textContent = `#${c.chunk ?? 1}.${c.rank}`;
+  el.querySelector(".sc").textContent = `★ ${(+c.score).toFixed(2)}`;
+  const a = el.querySelector(".ts"); a.textContent = `▶ ${c.timestamp}`; a.href = c.source_link || "#";
+  el.querySelector(".du").textContent = `${Math.round(c.duration)}s`;
+  const sb = el.querySelector(".stb"); sb.textContent = c.status; sb.className = `stb ${c.status}`;
+  el.querySelector(".srcname").textContent = c.src_title || "";
+  el.querySelector(".srcname").title = `${c.src_title} · title via ${c.title_strategy}`;
+  el.querySelector(".cacts [data-a=approve]").textContent = c.status === "approved" ? "Approved ✓" : "Approve";
+  el.querySelector(".cacts [data-a=reject]").textContent = c.status === "rejected" ? "Rejected ✕" : "Reject";
+  let busy = el.querySelector(".busy");
+  const msg = c.rendering ? "re-rendering…" : (c.render_error ? "render failed" : "");
+  if (msg && !busy) { busy = document.createElement("div"); busy.className = "busy"; el.querySelector(".vwrap").append(busy); }
+  if (busy) { if (msg) busy.textContent = msg; else busy.remove(); }
+}
+function renderClips() {
+  const vsel = $("#vfilter"), vids = [...new Map(clips.map(c => [c.video_id, c.src_title])).entries()];
+  const cur = vsel.value;
+  vsel.innerHTML = `<option value="">all videos (${vids.length})</option>` + vids.map(([id, t]) => `<option value="${esc(id)}">${esc((t||id).slice(0,50))}</option>`).join("");
+  vsel.value = vids.some(([id]) => id === cur) ? cur : "";
+  const byV = clips.filter(c => !vsel.value || c.video_id === vsel.value);
+  for (const f of ["all","pending","approved","rejected"]) $("#n-"+f).textContent = byV.filter(c => f === "all" || c.status === f).length;
+  $("#c-all").textContent = clips.length;
+  $("#c-pending").textContent = clips.filter(c => c.status === "pending").length;
+  $("#c-approved").textContent = clips.filter(c => c.status === "approved").length;
+  let shown = byV.filter(c => filter === "all" || c.status === filter);
+  const s = $("#sort").value;
+  if (s === "new") {   // newest video first, then latest chunk first, then rank
+    const vt = {}; for (const c of shown) vt[c.video_id] = Math.max(vt[c.video_id] || 0, c.mtime);
+    shown = [...shown].sort((a, b) => (vt[b.video_id] - vt[a.video_id]) || ((b.chunk||1) - (a.chunk||1)) || (a.rank - b.rank));
+  }
+  if (s === "score") shown = [...shown].sort((a, b) => b.score - a.score);
+  if (s === "time") shown = [...shown].sort((a, b) => (a.video_id + String(a.abs_start).padStart(9, "0")).localeCompare(b.video_id + String(b.abs_start).padStart(9, "0")));
+  const grid = $("#grid"); const keep = new Set(shown.map(c => c.key));
+  for (const [k, el] of cards) if (!clips.some(c => c.key === k)) { el.remove(); cards.delete(k); }
+  shown.forEach((c, i) => {
+    let el = cards.get(c.key);
+    if (!el) { el = cardEl(c); cards.set(c.key, el); }
+    updateCard(el, c);
+    if (grid.children[i] !== el) grid.insertBefore(el, grid.children[i] || null);
+  });
+  for (const [k, el] of cards) if (!keep.has(k) && el.parentNode) el.remove();
+  $("#empty").hidden = shown.length > 0;
+}
+async function pollClips() { try { clips = await api("/api/clips"); renderClips(); } catch {} }
+$("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return;
+  filter = b.dataset.f; document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b)); renderClips(); };
+$("#vfilter").onchange = renderClips; $("#sort").onchange = renderClips;
+
+async function pollIG() {
+  try {
+    const s = await api("/api/instagram/status"); const b = $("#igbtn");
+    if (s.connected) { b.textContent = `IG @${s.username} ✓`; b.title = `via Page ${s.page}` + (s.limit ? ` · ${s.limit.quota_usage ?? 0}/${s.limit.config?.quota_total ?? "?"} posts in last 24h` : ""); }
+    else { b.textContent = "Connect Instagram"; }
+  } catch {}
+}
+pollState(); pollClips(); pollIG(); setInterval(pollIG, 60000);
+setInterval(pollState, 2000); setInterval(pollClips, 4000);
+</script>
+</body>
+</html>

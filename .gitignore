@@ -1,0 +1,15 @@
+# env / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# outputs (clips, downloads, job state)
+out/
+
+# generated at first run
+assets/sfx/
+
+# local agent settings
+.pi/
