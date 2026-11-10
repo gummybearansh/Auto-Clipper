@@ -34,8 +34,8 @@ def plan_chunks(duration: float, live: bool, follow: bool) -> list[tuple[float, 
         out.append((t, t + CHUNK_SECONDS))
         t += CHUNK_SECONDS
     tail = usable - t
-    if tail >= MIN_TAIL and not (live and follow):     # following: wait for the full block / the stream to end
-        out.append((t, usable))
+    if not (live and follow) and (tail >= MIN_TAIL or (not out and tail >= 5)):
+        out.append((t, usable))                        # leftover tail, or the whole thing if the video is short
     return out
 
 
@@ -50,6 +50,7 @@ class JobManager:
         self.rerender_q: queue.Queue = queue.Queue()
         self.wake = threading.Event()
         self.current: str | None = None
+        self.on_clips = None          # callback(video_id, job) after a chunk produced clips (auto-post hook)
         for p in sorted(self.dir.glob("*.json")):
             try:
                 j = read_json(p)
@@ -69,10 +70,12 @@ class JobManager:
         j["updated"] = time.time()
         write_json(self.dir / f"{j['id']}.json", j)
 
-    def add(self, url: str, per_30: int = 10, layout: str = "auto", follow: bool = True) -> dict:
+    def add(self, url: str, per_30: int = 10, layout: str = "auto", follow: bool = True,
+            campaign: str | None = None, title: str | None = None, autopost: bool = False) -> dict:
         j = {"id": uuid.uuid4().hex[:8], "url": url.strip(), "status": "queued", "stage": "queued",
-             "opts": {"per_30": int(per_30), "layout": layout, "follow": bool(follow)},
-             "title": url.strip(), "platform": "", "video_id": None, "is_live": False, "duration": 0,
+             "opts": {"per_30": int(per_30), "layout": layout, "follow": bool(follow), "campaign": campaign or None,
+                      "autopost": bool(autopost)},
+             "title": title or url.strip(), "platform": "", "video_id": None, "is_live": False, "duration": 0,
              "chunks": [], "clips": 0, "error": None, "log": [], "created": time.time()}
         with self.lock:
             self.jobs[j["id"]] = j
@@ -306,7 +309,8 @@ class JobManager:
 
         src = fetch_chunk(remote, c["idx"], c["start"], c["end"], self.cfg, st)
         checkpoint()
-        clips = process_source(src, self.cfg, c["target"], j["opts"]["layout"], st, checkpoint, on_clip)
+        clips = process_source(src, self.cfg, c["target"], j["opts"]["layout"], st, checkpoint, on_clip,
+                               campaign=j["opts"].get("campaign"))
         st("cleaning up")
         freed = cleanup_chunk(src.out_dir, self.cfg)
         if freed:
@@ -315,3 +319,8 @@ class JobManager:
             c.update(status="done", clips=len(clips), stage="done", t1=time.time())
             j["clips"] = sum(x["clips"] for x in j["chunks"])
             self._save(j)
+        if clips and j["opts"].get("autopost") and self.on_clips:
+            try:
+                self.on_clips(remote.video_id, j)
+            except Exception as e:
+                log(f"auto-post hook failed: {e}")

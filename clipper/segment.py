@@ -20,6 +20,7 @@ class Candidate:
     score: float = 0.0
     peak_value: float = 0.0
     sub_peaks: list[tuple[float, float]] = field(default_factory=list)   # (t, value) inside window
+    meta: dict = field(default_factory=dict)                              # campaign info etc.
 
     @property
     def dur(self) -> float:

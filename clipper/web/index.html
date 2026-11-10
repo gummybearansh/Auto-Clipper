@@ -116,6 +116,51 @@
   .pubbar span { display: block; height: 100%; background: linear-gradient(90deg,#d62976,#feda75); }
   .hist { font-size: 11.5px; font-family: var(--mono); color: var(--mute); max-height: 130px; overflow: auto; margin-top: 8px; }
   .hist a { color: var(--text); }
+  .folders { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px; }
+  .folder { flex: 0 0 auto; min-width: 210px; max-width: 280px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .folder:hover { border-color: #3a3a41; }
+  .folder.on { border-color: var(--red); background: #1a1214; }
+  .folder .fn { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .folder .fn::before { content: "📁 "; }
+  .folder .fs { font-family: var(--mono); font-size: 11px; color: var(--mute); margin-top: 3px; }
+  .drop { margin-top: 10px; border: 1px dashed var(--line2); border-radius: 10px; padding: 10px; text-align: center; color: var(--mute);
+    font-size: 12.5px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop.over { border-color: var(--red); background: #1a1214; color: var(--text); }
+  .upbar { height: 4px; background: var(--line2); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .upbar span { display: block; height: 100%; width: 0; background: var(--red); transition: width .2s; }
+  .flagb { position: absolute; bottom: 52px; left: 8px; font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    background: var(--amber); color: #111; font-weight: 700; }
+  .campb { position: absolute; bottom: 52px; right: 8px; font-family: var(--mono); font-size: 10.5px; padding: 1px 6px; border-radius: 5px;
+    background: rgba(0,0,0,.65); color: #9fe7ff; }
+  .sub { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; }
+  .sub .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub .cd { font-family: var(--mono); font-size: 11px; }
+  .camp { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 20; }
+  .modal[hidden] { display: none; }
+  .mbox { background: #121214; border: 1px solid var(--line2); border-radius: 16px; width: min(1000px, 94vw); max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden; }
+  .mhead { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .mhead h3 { margin: 0; font-size: 15px; flex: 1; }
+  .mbody { display: grid; grid-template-columns: 210px 1fr; min-height: 0; flex: 1; }
+  .clist { border-right: 1px solid var(--line); padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .clist .ci { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; border: 1px solid transparent; }
+  .clist .ci:hover { background: #1a1a1d; } .clist .ci.on { border-color: var(--red); background: #1a1214; }
+  .cform { padding: 16px 18px; overflow: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-content: start; }
+  .cform .full { grid-column: 1 / -1; }
+  .cform label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mute); }
+  .cform input[type=text], .cform input[type=number], .cform textarea { background: var(--panel); border: 1px solid var(--line2);
+    border-radius: 8px; padding: 7px 9px; outline: none; color: var(--text); font-size: 13px; width: 100%; }
+  .cform textarea { min-height: 92px; font-family: var(--mono); font-size: 12px; resize: vertical; }
+  .cform .sec { grid-column: 1 / -1; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--mute);
+    border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+  .cform .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+  .cform .tip { font-size: 11px; color: var(--dim); }
+  .mfoot { display: flex; gap: 8px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); }
+  .mfoot .msg { flex: 1; font-size: 12px; color: var(--mute); }
+  .capbox textarea { width: 100%; min-height: 230px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px;
+    padding: 12px; color: var(--text); font: 13px/1.5 -apple-system, sans-serif; resize: vertical; outline: none; }
   .empty { color: var(--dim); padding: 60px 0; text-align: center; border: 1px dashed var(--line2); border-radius: 14px; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); } }
 </style>
@@ -128,6 +173,7 @@
     <span>clips <b id="c-all">0</b></span>
     <span>to post <b id="c-pending">0</b></span>
     <span>posted <b id="c-approved">0</b></span>
+    <button class="btn sm" id="campbtn">💎 Campaigns</button>
     <a id="igbtn" class="btn sm" href="/auth/instagram/start" style="text-decoration:none">Connect Instagram</a>
   </div>
 </header>
@@ -140,11 +186,16 @@
         <label>clips / 30 min <input id="per30" type="number" min="1" max="40" value="10"></label>
         <label>layout <select id="layout"><option>auto</option><option>split</option><option>crop</option><option>blur</option></select></label>
         <label title="Keep processing a live stream as new 30-minute blocks are recorded"><input id="follow" type="checkbox" checked> follow live</label>
+        <label title="Post this video's clips to Instagram automatically (most viral first, every N minutes, within the daily cap)"><input id="autopost" type="checkbox"> auto-post</label>
+        <label title="Apply a brand brief: priority moments, exclusions, hooks, hashtags">campaign <select id="campaign"><option value="">none</option></select></label>
       </div>
       <div class="row" style="margin-top:12px">
         <button class="btn primary" id="add">Queue</button>
         <span class="hint" id="addmsg"></span>
       </div>
+      <div class="drop" id="drop">⬆ <b>Upload a video</b> from this computer — click or drop a file here
+        <input id="file" type="file" accept="video/*,.mov,.mp4,.mkv,.webm" multiple hidden>
+        <div class="upbar" id="upbar" hidden><span></span></div><div class="hint" id="upmsg" style="margin-top:4px"></div></div>
       <div class="hint">Long videos are split into 30-minute chunks and processed one at a time. Clips show up as each chunk finishes.</div>
     </div>
     <div>
@@ -164,13 +215,56 @@
         <button data-f="posted">Posted<span class="n" id="n-posted"></span></button>
         <button data-f="rejected">Rejected<span class="n" id="n-rejected"></span></button>
       </div>
-      <select id="vfilter"><option value="">all videos</option></select>
+      <select id="vfilter" hidden><option value="">all videos</option></select>
       <select id="sort"><option value="score">most viral</option><option value="new">newest</option><option value="time">stream time</option></select>
     </div>
+    <div class="folders" id="folders"></div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden>No clips yet. Paste a link on the left — clips appear here as they render.</div>
   </section>
 </main>
+<div class="modal" id="cmodal" hidden><div class="mbox">
+  <div class="mhead"><h3>💎 Campaigns <span class="hint" style="font-weight:400">— brand rules, hooks & hashtags. Pick one when you queue a link or upload.</span></h3>
+    <button class="btn sm" id="cclose">✕</button></div>
+  <div class="mbody">
+    <div class="clist"><button class="btn sm ig" id="cnew">＋ New campaign</button><div id="citems"></div></div>
+    <form class="cform" id="cform" onsubmit="return false">
+      <input type="hidden" name="slug">
+      <label class="full">Campaign name<input type="text" name="name" placeholder="e.g. Natural Diamonds — Botswana"></label>
+      <label>Creator (credited in every caption)<input type="text" name="creator" placeholder="Marlon"></label>
+      <label>Emoji at the end of every hook<input type="text" name="emoji" placeholder="💎"></label>
+      <label>Disclosure<input type="text" name="disclosure" placeholder="#ad"></label>
+      <label>Platforms<input type="text" name="platforms" placeholder="instagram, tiktok"></label>
+      <label>Submit link within (minutes, 0 = no deadline)<input type="number" name="submit_within_min" min="0"></label>
+      <div style="display:flex;flex-direction:column;gap:6px;justify-content:end">
+        <label class="chk"><input type="checkbox" name="require_keywords"> every clip must mention a keyword</label>
+        <label class="chk"><input type="checkbox" name="music"> allow background music</label>
+        <label class="chk"><input type="checkbox" name="review_before_post"> hold everything for my review (no auto-post)</label></div>
+      <div class="sec">Hashtags <span class="tip" id="tagpreview"></span></div>
+      <label class="full">Always included<input type="text" name="required" placeholder="#Marlon"></label>
+      <label>Campaign-owned pool<textarea name="owned" placeholder="#NaturalDiamonds, #RealDiamonds, #DiamondStory"></textarea></label>
+      <label>Discovery pool<textarea name="discovery" placeholder="#TravelDiary, #Botswana"></textarea></label>
+      <label>Campaign tags per post<input type="number" name="owned_per_post" min="0" max="6"></label>
+      <label>Discovery tags per post<input type="number" name="discovery_per_post" min="0" max="6"></label>
+      <div class="sec">Message</div>
+      <label>Keywords (a clip must mention one)<textarea name="keywords" placeholder="diamond, botswana, education, students"></textarea></label>
+      <label>Banned words (never in clips, hooks, captions, tags)<textarea name="banned" placeholder="lab grown, synthetic"></textarea></label>
+      <div class="sec">Timestamps <span class="tip">— paste lines straight from the brief. Only used for the main video they describe.</span></div>
+      <label class="full">Key moments (forced in, hook = your text)<textarea name="priorities" placeholder="01:30 – How diamonds helped transform Botswana&#10;17:30 – University interview about diamond-funded education"></textarea></label>
+      <label>Never include<textarea name="exclude" placeholder="0:47-0:53 must not be included&#10;Licence plates: 03:13, 03:58&#10;Copyright music: 13:55 ±20s"></textarea></label>
+      <label>Flag for review (never auto-posted)<textarea name="review" placeholder="12:10 Diamonds Impact presentation&#10;19:09 check with client"></textarea></label>
+    </form>
+  </div>
+  <div class="mfoot"><span class="msg" id="cmsg"></span><button class="btn sm no" id="cdel">Delete</button><button class="btn primary" id="csave">Save campaign</button></div>
+</div></div>
+
+<div class="modal" id="capmodal" hidden><div class="mbox capbox" style="width:min(620px,94vw)">
+  <div class="mhead"><h3 id="captitle">Caption</h3><button class="btn sm" id="capclose">✕</button></div>
+  <div style="padding:16px 18px"><textarea id="captext"></textarea>
+    <div class="hint" id="capinfo"></div></div>
+  <div class="mfoot"><span class="msg" id="capmsg"></span><button class="btn sm" id="capreset">Reset to generated</button><button class="btn primary" id="capsave">Save caption</button></div>
+</div></div>
+
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -179,14 +273,14 @@ const ts = s => { s = Math.max(0, Math.floor(s||0)); const h = Math.floor(s/3600
 const api = (u, body) => fetch(u, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"},
   body: JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || r.statusText)));
 
-let filter = "all", clips = [], openLogs = new Set();
+let filter = "all", clips = [], openLogs = new Set(), folders = [], folder = localStorage.getItem("folder") || "";
 
 // ---------------- add
 $("#add").onclick = async () => {
   const urls = $("#urls").value.trim();
   if (!urls) return;
   try {
-    const r = await api("/api/jobs", {urls, per_30: +$("#per30").value || 10, layout: $("#layout").value, follow: $("#follow").checked});
+    const r = await api("/api/jobs", {urls, per_30: +$("#per30").value || 10, layout: $("#layout").value, follow: $("#follow").checked, campaign: $("#campaign").value || null, autopost: $("#autopost").checked});
     $("#urls").value = ""; $("#addmsg").textContent = `queued ${r.added.length}`;
     setTimeout(() => $("#addmsg").textContent = "", 2500); pollState();
   } catch (e) { $("#addmsg").textContent = e; }
@@ -256,6 +350,7 @@ function cardEl(c) {
       <div class="srcname"></div>
       <div class="cacts"><button class="btn sm ig" data-a="post">Post ▸ IG</button><a class="btn sm posted" target="_blank" rel="noopener" hidden>Posted ✓</a>
         <button class="btn sm no" data-a="reject">Reject</button>
+        <button class="btn sm" data-a="caption" title="Edit caption & hashtags">✎</button>
         <button class="btn sm" data-a="reveal" title="Show in Finder">↗</button></div>
     </div>`;
   const ttl = el.querySelector(".ttl");
@@ -267,6 +362,7 @@ function cardEl(c) {
   el.querySelector(".cacts").addEventListener("click", async e => {
     const b = e.target.closest("[data-a]"); if (!b) return;
     let a = b.dataset.a;
+    if (a === "caption") return openCaption(el.dataset.key, el._c.title);
     if (a === "reject" && el._c.status === "rejected") a = "pending";
     if (a === "post") { b.disabled = true; b.textContent = "Queued…"; }
     try { await api("/api/clip", {key: el.dataset.key, action: a}); } catch (err) { alert(err); }
@@ -300,6 +396,13 @@ function updateCard(el, c) {
     pb.textContent = st === "queued" ? "Queued…" : st === "posting" ? "Posting…" : st === "failed" ? "Retry ▸ IG" : "Post ▸ IG";
     pb.title = c.post_error || "Publish this clip to Instagram as a Reel";
   }
+  const camp = c.campaign || {};
+  let fb = el.querySelector(".flagb");
+  if (camp.flag && !fb) { fb = document.createElement("span"); fb.className = "flagb"; fb.textContent = "⚠ review"; el.querySelector(".vwrap").append(fb); }
+  if (fb) { if (camp.flag) fb.title = camp.flag; else fb.remove(); }
+  let cb = el.querySelector(".campb");
+  if (camp.slug && !cb) { cb = document.createElement("span"); cb.className = "campb"; el.querySelector(".vwrap").append(cb); }
+  if (cb) cb.textContent = camp.priority ? "💎 key moment" : "💎 campaign";
   let badge = el.querySelector(".igb");
   if (ig && !badge) { badge = document.createElement("a"); badge.className = "igb"; badge.target = "_blank"; badge.textContent = "IG ✓"; el.querySelector(".vwrap").append(badge); }
   if (badge) { if (ig) badge.href = ig.permalink; else badge.remove(); }
@@ -309,12 +412,22 @@ function updateCard(el, c) {
   if (msg && !busy) { busy = document.createElement("div"); busy.className = "busy"; el.querySelector(".vwrap").append(busy); }
   if (busy) { if (msg) busy.textContent = msg; else busy.remove(); }
 }
+function renderFolders() {
+  if (folder && !folders.some(f => f.video_id === folder) && folder !== "*") folder = "";
+  if (!folder && folders.length) folder = folders[0].video_id;     // default: most recently active folder
+  const html = folders.map(f => `<div class="folder ${f.video_id === folder ? "on" : ""}" data-f="${esc(f.video_id)}" title="${esc(f.name)}">
+      <div class="fn">${esc(f.name.replace(/^\d{4}-\d{2}-\d{2} /, ""))}</div>
+      <div class="fs">${f.clips} clips · ${f.posted} posted${f.flagged ? ` · ⚠ ${f.flagged} review` : ""}</div></div>`).join("")
+    + `<div class="folder ${folder === "*" ? "on" : ""}" data-f="*"><div class="fn">All folders</div><div class="fs">${clips.length} clips</div></div>`;
+  if ($("#folders").dataset.h !== html) { $("#folders").innerHTML = html; $("#folders").dataset.h = html; }
+}
+$("#folders").addEventListener("click", e => {
+  const f = e.target.closest(".folder"); if (!f) return;
+  folder = f.dataset.f; localStorage.setItem("folder", folder); renderFolders(); renderClips(); pollPub();
+});
 function renderClips() {
-  const vsel = $("#vfilter"), vids = [...new Map(clips.map(c => [c.video_id, c.src_title])).entries()];
-  const cur = vsel.value;
-  vsel.innerHTML = `<option value="">all videos (${vids.length})</option>` + vids.map(([id, t]) => `<option value="${esc(id)}">${esc((t||id).slice(0,50))}</option>`).join("");
-  vsel.value = vids.some(([id]) => id === cur) ? cur : "";
-  const byV = clips.filter(c => !vsel.value || c.video_id === vsel.value);
+  renderFolders();
+  const byV = clips.filter(c => folder === "*" || c.video_id === folder);
   const isPosted = c => !!(c.posts && c.posts.instagram);
   const match = (c, f) => f === "all" || (f === "posted" ? isPosted(c) : f === "pending" ? (!isPosted(c) && c.status !== "rejected") : c.status === f);
   for (const f of ["all","pending","posted","rejected"]) $("#n-"+f).textContent = byV.filter(c => match(c, f)).length;
@@ -340,50 +453,175 @@ function renderClips() {
   for (const [k, el] of cards) if (!keep.has(k) && el.parentNode) el.remove();
   $("#empty").hidden = shown.length > 0;
 }
-async function pollClips() { try { clips = await api("/api/clips"); renderClips(); } catch {} }
+async function pollClips() { try { [clips, folders] = await Promise.all([api("/api/clips"), api("/api/folders")]); renderClips(); } catch {} }
 $("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return;
   filter = b.dataset.f; document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b)); renderClips(); };
-$("#vfilter").onchange = renderClips; $("#sort").onchange = renderClips;
+$("#sort").onchange = renderClips;
 
-let pubVideos = [];
+const fmtLeft = s => s <= 0 ? "now" : `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 async function pollPub() {
   let p; try { p = await api("/api/publish"); } catch { return; }
-  const box = $("#pub"), c = p.campaign;
-  const vids = [...new Map(clips.map(x => [x.video_id, x.src_title])).entries()];
-  const cur = p.current ? `<div class="stage">▲ posting “${esc(p.current.title)}” · ${esc(p.current.stage)}</div>` : "";
-  const hist = (p.history || []).slice().reverse().slice(0, 12).map(h => h.ok
-      ? `<div>✓ <a href="${esc(h.permalink)}" target="_blank">${esc(h.title)}</a></div>`
-      : `<div style="color:var(--red)">✕ ${esc(h.title)} — ${esc((h.error||"").slice(0,80))}</div>`).join("");
-  let html;
-  if (c) {
-    const pct = Math.round(100 * c.posted / c.target), nx = c.next_in;
-    const vt = (vids.find(v => v[0] === c.video_id) || [, c.video_id])[1] || c.video_id;
-    const state = c.paused_reason === "done" ? "done ✓" : c.active ? (p.current ? "posting" : `next in ${Math.floor(nx/60)}:${String(nx%60).padStart(2,"0")}`) : (c.paused_reason || "paused");
-    html = `<div class="srcname" style="color:var(--text)">${esc(vt)}</div>
-      <div class="big">${c.posted} / ${c.target} posted · every ${Math.round(c.interval/60)} min · ${c.queue_size} ready</div>
-      <div class="pubbar"><span style="width:${pct}%"></span></div>
-      <div class="stage">${esc(state)}</div>${cur}
-      <div class="acts" style="display:flex;gap:6px;margin-top:8px">
-        ${c.paused_reason === "done" ? "" : c.active ? `<button class="btn sm" data-p="pause">Pause</button>` : `<button class="btn sm" data-p="resume">Resume</button>`}
-        <button class="btn sm no" data-p="stop">${c.paused_reason === "done" ? "Clear" : "Stop"}</button></div>`;
-  } else {
-    html = `<div class="row" style="flex-wrap:wrap;gap:8px">
-        <select id="pv" style="max-width:100%">${vids.map(([id, t]) => `<option value="${esc(id)}">${esc((t||id).slice(0,40))}</option>`).join("")}</select>
-        <label class="hint" style="margin:0">post <input id="pn" type="number" value="50" min="1" max="100"> clips</label>
-        <label class="hint" style="margin:0">every <input id="pi" type="number" value="5" min="1" max="240"> min</label>
-        <button class="btn sm ig" data-p="start">Start · most viral first</button></div>${cur}`;
+  const box = $("#pub"), st = p.settings;
+  const nameOf = id => ((folders.find(f => f.video_id === id) || {}).name || id).replace(/^\d{4}-\d{2}-\d{2} /, "");
+  const pct = Math.min(100, Math.round(100 * p.sent_today / st.daily_cap));
+  let html = `<div class="big">${p.sent_today} / ${st.daily_cap} sent today · every
+      <input id="pint" type="number" min="1" max="120" value="${Math.round(st.interval/60)}" style="width:44px"> min · cap
+      <input id="pcap" type="number" min="1" max="95" value="${st.daily_cap}" style="width:48px"></div>
+    <div class="pubbar"><span style="width:${pct}%"></span></div>
+    <div class="stage">${p.net_down ? "⚠ offline — will retry" : p.current ? `▲ posting “${esc(p.current.title)}” · ${esc(p.current.stage)}`
+      : p.sent_today >= st.daily_cap ? "daily cap reached — resumes tomorrow" : p.campaigns.some(c => c.active) ? `next post in ${fmtLeft(p.next_in)}` : "idle"}</div>`;
+  for (const c of p.campaigns) {
+    const state = c.paused_reason === "done" ? "done ✓" : c.active ? (c.queue_size ? "running" : "waiting for clips") : (c.paused_reason || "paused");
+    html += `<div class="camp"><div class="srcname" style="color:var(--text)">📁 ${esc(nameOf(c.video_id))}</div>
+      <div class="stage">${c.posted} / ${c.target} posted · ${c.queue_size} ready · ${esc(state)}</div>
+      <div style="display:flex;gap:6px;margin-top:6px">${c.paused_reason === "done" ? "" : c.active
+        ? `<button class="btn sm" data-p="pause" data-c="${c.id}">Pause</button>` : `<button class="btn sm" data-p="resume" data-c="${c.id}">Resume</button>`}
+        <button class="btn sm no" data-p="stop" data-c="${c.id}">${c.paused_reason === "done" ? "Clear" : "Stop"}</button></div></div>`;
   }
-  if (box.dataset.h !== html + hist) { box.innerHTML = html + (hist ? `<div class="hist">${hist}</div>` : ""); box.dataset.h = html + hist; }
+  const fsel = folder && folder !== "*" ? folder : (folders[0] || {}).video_id;
+  if (fsel && !p.campaigns.some(c => c.video_id === fsel && c.paused_reason !== "done"))
+    html += `<div class="camp"><div class="row" style="flex-wrap:wrap;gap:8px"><span class="hint" style="margin:0">📁 ${esc(nameOf(fsel))}</span>
+      <label class="hint" style="margin:0">post <input id="pn" type="number" value="70" min="1" max="95"> clips</label>
+      <button class="btn sm ig" data-p="start" data-v="${esc(fsel)}">Start · most viral first</button></div></div>`;
+  if (p.submissions.length)
+    html += `<div class="camp"><div class="stage" style="color:var(--amber)">Submit to the brand (within 30 min of posting):</div>` +
+      p.submissions.map(x => `<div class="sub"><span class="t" title="${esc(x.title)}">${esc(x.title)}</span>
+        <span class="cd" style="color:${x.left < 300 ? "var(--red)" : "var(--mute)"}">${x.left > 0 ? fmtLeft(x.left) : "late"}</span>
+        <button class="btn sm" data-copy="${esc(x.permalink)}">Copy link</button>
+        <button class="btn sm ok" data-sub="${esc(x.key)}">✓</button></div>`).join("") + `</div>`;
+  const hist = (p.history || []).slice().reverse().slice(0, 10).map(h => h.ok
+      ? `<div>✓ <a href="${esc(h.permalink)}" target="_blank">${esc(h.title)}</a></div>`
+      : `<div style="color:var(--red)">✕ ${esc(h.title)} — ${esc((h.error||"").slice(0,70))}</div>`).join("");
+  const key = html + hist;
+  if (box.dataset.h !== key && !box.contains(document.activeElement)) { box.innerHTML = html + (hist ? `<div class="hist">${hist}</div>` : ""); box.dataset.h = key; }
 }
 $("#pub").addEventListener("click", async e => {
+  const cp = e.target.closest("[data-copy]");
+  if (cp) { navigator.clipboard.writeText(cp.dataset.copy); cp.textContent = "Copied"; return; }
+  const sb = e.target.closest("[data-sub]");
+  if (sb) { await api("/api/publish/submitted", {key: sb.dataset.sub}); $("#pub").dataset.h = ""; return pollPub(); }
   const b = e.target.closest("[data-p]"); if (!b) return;
   const op = b.dataset.p;
   try {
-    if (op === "start") await api("/api/publish/start", {video_id: $("#pv").value, count: +$("#pn").value || 50, interval: +$("#pi").value || 5});
-    else { if (op === "stop" && !confirm("Stop the auto-post campaign?")) return; await api(`/api/publish/${op}`, {}); }
+    if (op === "start") await api("/api/publish/start", {video_id: b.dataset.v, count: +$("#pn").value || 70});
+    else { if (op === "stop" && !confirm("Stop this auto-post run?")) return; await api(`/api/publish/${b.dataset.c}/${op}`, {}); }
   } catch (err) { alert(err); }
   $("#pub").dataset.h = ""; pollPub();
 });
+$("#pub").addEventListener("change", async e => {
+  if (e.target.id === "pint" || e.target.id === "pcap") {
+    await api("/api/publish/settings", {interval_min: +$("#pint").value || null, daily_cap: +$("#pcap").value || null});
+    $("#pub").dataset.h = ""; pollPub();
+  }
+});
+
+// ---------- upload from computer
+function uploadFile(f) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", f); fd.append("per_30", $("#per30").value || 10); fd.append("layout", $("#layout").value); fd.append("campaign", $("#campaign").value); fd.append("autopost", $("#autopost").checked ? "1" : "");
+    const x = new XMLHttpRequest(); x.open("POST", "/api/upload");
+    $("#upbar").hidden = false;
+    x.upload.onprogress = e => { if (e.lengthComputable) { $("#upbar span").style.width = `${100 * e.loaded / e.total}%`; $("#upmsg").textContent = `uploading ${f.name} · ${Math.round(100 * e.loaded / e.total)}%`; } };
+    x.onload = () => x.status < 300 ? resolve() : reject(x.responseText);
+    x.onerror = () => reject("upload failed");
+    x.send(fd);
+  });
+}
+async function uploadAll(files) {
+  for (const f of files) {
+    try { await uploadFile(f); $("#upmsg").textContent = `queued ${f.name}`; } catch (e) { $("#upmsg").textContent = `✕ ${f.name}: ${e}`; }
+  }
+  setTimeout(() => { $("#upbar").hidden = true; $("#upbar span").style.width = 0; }, 1500);
+  pollState();
+}
+$("#drop").onclick = e => { if (e.target.id !== "file") $("#file").click(); };
+$("#file").onchange = e => uploadAll([...e.target.files]);
+["dragover", "dragenter"].forEach(ev => $("#drop").addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("#drop").addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.remove("over"); }));
+$("#drop").addEventListener("drop", e => uploadAll([...e.dataTransfer.files]));
+loadCampList();
+
+// ---------- campaigns editor
+const cform = $("#cform");
+let campList = [];
+async function loadCampList(sel) {
+  campList = await api("/api/campaigns");
+  $("#citems").innerHTML = campList.map(c => `<div class="ci ${c.slug === sel ? "on" : ""}" data-s="${esc(c.slug)}">${esc(c.name)}</div>`).join("") || `<div class="hint">No campaigns yet.</div>`;
+  const cur = $("#campaign").value;
+  $("#campaign").innerHTML = `<option value="">none</option>` + campList.map(c => `<option value="${esc(c.slug)}">${esc(c.name)}</option>`).join("");
+  $("#campaign").value = campList.some(c => c.slug === cur) ? cur : "";
+}
+function fillForm(d) {
+  for (const el of cform.elements) {
+    if (!el.name) continue;
+    if (el.type === "checkbox") el.checked = !!d[el.name]; else el.value = d[el.name] ?? "";
+  }
+  tagPreview();
+}
+function formData() {
+  const d = {};
+  for (const el of cform.elements) if (el.name) d[el.name] = el.type === "checkbox" ? el.checked : el.type === "number" ? (+el.value || 0) : el.value;
+  return d;
+}
+function tagPreview() {
+  const n = s => (s || "").split(/[,\s]+/).filter(Boolean).length;
+  const d = formData();
+  const total = n(d.required) + Math.min(n(d.owned), d.owned_per_post || 0) + Math.min(n(d.discovery), d.discovery_per_post || 0) + ((d.disclosure || "").startsWith("#") ? 1 : 0);
+  $("#tagpreview").textContent = `— ${total} hashtags per post (always + ${d.owned_per_post || 0} campaign + ${d.discovery_per_post || 0} discovery${(d.disclosure||"").startsWith("#") ? " + disclosure" : ""}), rotated so posts don't repeat`;
+}
+cform.addEventListener("input", tagPreview);
+async function openCampaign(slug) {
+  $("#cmsg").textContent = "";
+  await loadCampList(slug);
+  if (slug) fillForm(await api(`/api/campaigns/${slug}`));
+  else fillForm({emoji: "💎", disclosure: "#ad", platforms: "instagram, tiktok", owned_per_post: 2, discovery_per_post: 1, require_keywords: true});
+  $("#cdel").hidden = !slug;
+  $("#cmodal").hidden = false;
+}
+$("#campbtn").onclick = () => openCampaign($("#campaign").value || (campList[0] || {}).slug || "");
+$("#cclose").onclick = () => $("#cmodal").hidden = true;
+$("#cnew").onclick = () => openCampaign("");
+$("#citems").addEventListener("click", e => { const c = e.target.closest(".ci"); if (c) openCampaign(c.dataset.s); });
+$("#csave").onclick = async () => {
+  try {
+    const r = await api("/api/campaigns", formData());
+    cform.elements.slug.value = r.slug;
+    $("#cmsg").innerHTML = `✓ saved · ${r.tags_per_post} hashtags/post · ${r.priorities} key moments · ${r.exclude} excluded · ${r.review} flagged` +
+      (r.warnings.length ? ` · <span style="color:var(--amber)">⚠ ${esc(r.warnings.join("; "))}</span>` : "") +
+      `<br><span class="tip">Hashtag & caption changes apply to every unposted clip right away. Timestamp changes apply to clips made from now on.</span>`;
+    await loadCampList(r.slug); $("#cdel").hidden = false;
+  } catch (e) { $("#cmsg").innerHTML = `<span style="color:var(--red)">${esc(e)}</span>`; }
+};
+$("#cdel").onclick = async () => {
+  const slug = cform.elements.slug.value; if (!slug || !confirm("Delete this campaign? (clips already made keep their hooks)")) return;
+  await api(`/api/campaigns/${slug}`, undefined).catch(() => {});
+  await fetch(`/api/campaigns/${slug}`, {method: "DELETE"}); openCampaign("");
+};
+
+// ---------- caption editor
+let capKey = null;
+async function openCaption(key, title) {
+  capKey = key; $("#captitle").textContent = title; $("#capmsg").textContent = "";
+  const r = await api("/api/clip", {key, action: "get_caption"});
+  $("#captext").value = r.caption; capInfo(r.custom); $("#capmodal").hidden = false;
+}
+function capInfo(custom) {
+  const t = $("#captext").value, tags = (t.match(/#\w+/g) || []).length;
+  $("#capinfo").textContent = `${t.length} / 2200 characters · ${tags} hashtags${custom ? " · edited by you" : " · generated"}`;
+}
+$("#captext").addEventListener("input", () => capInfo(true));
+$("#capclose").onclick = () => $("#capmodal").hidden = true;
+$("#capsave").onclick = async () => {
+  try { await api("/api/clip", {key: capKey, action: "caption", caption: $("#captext").value}); $("#capmsg").textContent = "✓ saved — this is what will be posted"; }
+  catch (e) { $("#capmsg").textContent = String(e); }
+};
+$("#capreset").onclick = async () => {
+  await api("/api/clip", {key: capKey, action: "caption", caption: ""});
+  const r = await api("/api/clip", {key: capKey, action: "get_caption"}); $("#captext").value = r.caption; capInfo(false);
+  $("#capmsg").textContent = "reset to the generated caption";
+};
+document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#cmodal").hidden = true; $("#capmodal").hidden = true; } });
 
 async function pollIG() {
   try {

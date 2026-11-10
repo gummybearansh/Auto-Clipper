@@ -23,6 +23,11 @@ def test_chunk_plan_live():
     assert plan_chunks(3600, live=False, follow=True) == [(0, 1800), (1800, 3600)]
 
 
+def test_short_video_is_one_chunk():
+    assert plan_chunks(30.4, live=False, follow=False) == [(0.0, 30.4)]
+    assert plan_chunks(3, live=False, follow=False) == []
+
+
 def test_clips_per_chunk():
     assert clips_for(1800, 10) == 10
     assert clips_for(900, 10) == 5

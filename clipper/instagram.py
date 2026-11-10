@@ -176,15 +176,16 @@ def recent_captions(n: int = 15) -> list[dict]:
 
 
 def publish_reel(video: Path, caption: str, share_to_feed: bool = True, progress=None,
-                 timeout: int = 600) -> dict:
+                 timeout: int = 600, thumb_ms: int | None = None) -> dict:
     """Upload + publish a Reel. Returns {"media_id", "permalink"}."""
     progress = progress or (lambda s: None)
     ig, tok = _ctx()
     video = Path(video)
     size = video.stat().st_size
     progress("creating container")
+    extra = {"thumb_offset": str(max(0, int(thumb_ms)))} if thumb_ms is not None else {}
     cont = post(f"{ig}/media", media_type="REELS", upload_type="resumable", caption=caption,
-                share_to_feed="true" if share_to_feed else "false", access_token=tok)
+                share_to_feed="true" if share_to_feed else "false", access_token=tok, **extra)
     cid, uri = cont["id"], cont.get("uri") or f"https://rupload.facebook.com/ig-api-upload/{API}/{cont['id']}"
     progress(f"uploading {size / 1e6:.0f} MB")
     r = _call("POST", uri, data=video.read_bytes(), timeout=180,

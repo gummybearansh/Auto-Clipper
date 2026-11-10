@@ -97,11 +97,12 @@ Built from heuristics only: the dominant chat reaction (`KEKW` spam → *"chat l
 
 `clipper ui` opens a local web app at `http://localhost:8765`:
 
-- **Paste links** (several at once), set clips per 30 min, pick a layout, follow live streams
+- **Paste links or upload videos** from your computer (drag and drop), set clips per 30 min, pick a layout and campaign, tick *auto-post*
+- **Folders**, one per link, just like the Desktop export, so you only see one video's clips at a time
 - **Job cards** with per-chunk progress bars, a LIVE badge, logs, cancel (stops within seconds), retry and *open folder*
 - **Clip grid** with thumbnails, an inline player, scores, a ▶ deep link to the exact moment in the stream, and click-to-edit titles that re-render on Enter
 - **Post ▸ IG** on any clip publishes it as a Reel in about 30 s; posted clips get a badge linking to the Reel
-- **Auto-post campaigns**: *"post 50 clips from this stream, one every 5 minutes, most viral first"*. Strong clips from chunks rendered later still jump the queue, and it pauses itself if Instagram pushes back
+- **Auto-post**: one post every *N* minutes (default 2) with a daily cap (default 70) and a live **"sent today"** counter. Each folder's clips go most viral first, and several folders take turns. It pauses itself if Instagram pushes back
 - **Connect Instagram** with one click (OAuth, permanent Page token)
 
 ---
@@ -197,6 +198,24 @@ weights:
 asr:   { backend: whisper, model: small }        # or --asr deepgram with DEEPGRAM_API_KEY
 clip:  { min_len: 15, max_len: 60 }
 ```
+
+## 💎 Brand campaigns
+
+Clipping for a paid campaign? Open **💎 Campaigns** in the dashboard, paste the brief's lines in, and pick the campaign when you queue a link or upload. Everything about it is editable there; no code or config changes needed:
+
+| Brief says | Campaign field | What the clipper does |
+|---|---|---|
+| "01:30 – How diamonds helped transform Botswana" | **Key moments** | always clipped, scored to the top, hook = your exact wording |
+| "Licence plates: 03:13, 03:58" · "0:47-0:53 never include" | **Never include** | clips are trimmed around these, or dropped (padding is guessed from the reason, or `±20s`) |
+| "12:10 – flag for review" | **Flag for review** | clip is made but shown ⚠ and never auto-posted |
+| "every clip must connect back to …" | **Keywords** | a clip must mention one, or it's dropped |
+| "never mention lab-grown" | **Banned words** | never in clips, hooks, captions or hashtags; footage that says it isn't clipped |
+| "4–6 hashtags, incl. #Marlon, 1 owned, 1 discovery" | **Hashtags** | always + N from the campaign pool + N discovery, rotated per post |
+| "credit the creator" · "#ad" · "submit within 30 min" | creator · disclosure · deadline | added to every caption; posted links appear with a countdown |
+
+Hooks on campaign clips are only ever the brief's own words, an exact quote from the video, or a plain description, never clickbait. Brief timestamps only apply to the long video they describe; shorter official cutdowns become one full clip each.
+
+Any clip's caption can also be edited by hand (✎ on the card). Hashtag edits apply to every unposted clip straight away.
 
 ## 🎵 Background music
 

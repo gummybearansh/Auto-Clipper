@@ -61,7 +61,40 @@ def _cfg_get(cfg: Config | None, *path, default=None):
     return default if cur is None else cur
 
 
+def _campaign(rec: dict):
+    if not rec.get("campaign"):
+        return None
+    from .campaign import load
+    return load(rec["campaign"].get("slug"))
+
+
+def campaign_hashtags(rec: dict, camp) -> list[str]:
+    """Brief rule: 4–6 tags = required (#Marlon) + owned + discovery (+ disclosure). Rotated per clip so posts
+    don't repeat the same set; nothing banned (e.g. lab-grown) can ever appear."""
+    h = camp.hashtags or {}
+    seed = int(hashlib.md5(str(rec.get("key", rec["title"])).encode()).hexdigest(), 16)
+
+    def take(pool, n, salt):
+        pool = [t for t in pool if not camp.has_banned(t)]
+        if not pool:
+            return []
+        start = (seed >> salt) % len(pool)
+        return [pool[(start + i) % len(pool)] for i in range(min(n, len(pool)))]
+    tags = list(h.get("required", [])) + take(h.get("owned", []), int(h.get("owned_per_post", 2)), 3) \
+        + take(h.get("discovery", []), int(h.get("discovery_per_post", 1)), 11)
+    if camp.disclosure.startswith("#"):
+        tags.append(camp.disclosure.lstrip("#"))
+    out = []
+    for t in tags:
+        if t.lower() not in [x.lower() for x in out]:
+            out.append(t)
+    return ["#" + t for t in out[:6]]
+
+
 def hashtags(rec: dict, platform: str, cfg: Config | None = None) -> list[str]:
+    camp = _campaign(rec)
+    if camp:
+        return campaign_hashtags(rec, camp)
     src = rec.get("source", {})
     who = slug(src.get("uploader"))
     game = (src.get("game") or "").strip()
@@ -105,7 +138,26 @@ def _music_line(rec: dict) -> list[str]:
     return [m["credit"]] if isinstance(m, dict) and m.get("credit") else []
 
 
+def campaign_caption(rec: dict, camp, cfg: Config | None = None) -> str:
+    """Brief: mention Marlon by name, keep it accurate and on-message, no clickbait, nothing banned."""
+    creator = camp.creator or "Marlon"
+    line = f"🎥 {creator} in Botswana — where natural diamonds come from"
+    me = _cfg_get(cfg, "instagram_handle", default="@gummybearclips")
+    cta = _pick(IG_CTAS, rec.get("key", rec["title"])).format(me=me)
+    text = "\n".join([rec["title"], "", line, cta, "", " ".join(campaign_hashtags(rec, camp))]).strip()
+    assert not camp.has_banned(text), "banned term in caption"
+    return text
+
+
 def instagram_caption(rec: dict, cfg: Config | None = None) -> str:
+    camp = _campaign(rec)
+    if rec.get("caption_override"):                  # edited by hand in the dashboard
+        txt = rec["caption_override"].strip()
+        if camp and camp.has_banned(txt):
+            raise ValueError(f"caption contains a banned term for {camp.name}: {camp.has_banned(txt)}")
+        return txt
+    if camp:
+        return campaign_caption(rec, camp, cfg)
     me = _cfg_get(cfg, "instagram_handle", default="@gummybearclips")
     cta = _pick(IG_CTAS, rec.get("key", rec["title"])).format(me=me)
     parts = [rec["title"], "", credit(rec, "instagram", cfg), *_music_line(rec), cta, "",
@@ -130,6 +182,22 @@ def youtube_description(rec: dict, cfg: Config | None = None) -> str:
 def post_sheet(rec: dict, cfg: Config | None = None) -> str:
     """The per-clip .txt that sits next to the .mp4 in the export folder."""
     src = rec.get("source", {})
+    camp = _campaign(rec)
+    if rec.get("caption_override") and not camp:
+        return "\n".join(["━━━━━━━━ CAPTION (edited) ━━━━━━━━", rec["caption_override"].strip(), "",
+                          f"moment: {rec.get('source_link', '')}", ""])
+    if camp:
+        cap = instagram_caption(rec, cfg)
+        cinfo = rec.get("campaign", {})
+        lines = ["━━━━━━━━ INSTAGRAM REEL ━━━━━━━━", cap, "", "━━━━━━━━ TIKTOK ━━━━━━━━", cap, ""]
+        if cinfo.get("flag"):
+            lines += [f"⚠️  REVIEW BEFORE POSTING: {cinfo['flag']}", ""]
+        lines += ["━━━━━━━━ CAMPAIGN ━━━━━━━━", f"{camp.name} — Instagram Reels + TikTok only (no YouTube)",
+                  f"Submit the post link within {camp.submit_within_min} minutes of posting." if camp.submit_within_min else "",
+                  f"priority moment: {cinfo.get('priority')}" if cinfo.get("priority") else "",
+                  f"keywords heard: {', '.join(cinfo.get('keywords') or []) or '—'}",
+                  f"source time {rec.get('timestamp')} · {rec.get('duration', 0):.0f}s · score {rec.get('score', 0):.2f}", ""]
+        return "\n".join(l for l in lines if l is not None)
     return "\n".join([
         "━━━━━━━━ INSTAGRAM REEL ━━━━━━━━",
         instagram_caption(rec, cfg),

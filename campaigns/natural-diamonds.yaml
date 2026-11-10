@@ -1,0 +1,63 @@
+# Campaign: Natural Diamonds × Botswana (Marlon)
+name: Natural Diamonds — Botswana
+creator: Marlon                 # credit line: "🎥 Marlon"
+emoji: "💎"                     # every hook ends with this instead of 🔥/😭
+disclosure: "#ad"               # paid campaign → disclose in every caption (counts toward the 4–6 hashtags)
+platforms: [instagram, tiktok]  # campaign allows Instagram Reels + TikTok only (no YouTube)
+submit_within_min: 30           # post link must be submitted within 30 minutes
+
+# 4–6 hashtags per post: #Marlon + ≥1 campaign-owned + ≥1 discovery. We use 5: Marlon + 2 owned + 1 discovery + #ad
+hashtags:
+  required: [Marlon]
+  owned: [NaturalDiamonds, RealDiamonds, DiamondStory, DiamondOrigin, FromTheEarth, HeritageAndPride,
+          BeautifulThingsFromAfrica, LoveFromAfrica, DiamondCommunity]
+  discovery: [TravelDiary, Botswana, JewelleryTok]
+  owned_per_post: 2
+  discovery_per_post: 1
+
+# never in a clip, title, caption or hashtag
+banned: ["lab grown", "lab-grown", "labgrown", "lab created", "lab-created", "synthetic", "man made", "man-made",
+         "cultured diamond", "simulant", "moissanite", "cubic zirconia"]
+music: false                    # keep the original audio clean (no added music on campaign clips)
+review_before_post: false       # true = nothing auto-posts; everything waits for you
+
+# every clip must connect back to the campaign through dialogue
+require_keywords: true
+keywords: [diamond, diamonds, botswana, education, educated, school, schools, university, student, students,
+           scholarship, scholarships, tuition, infrastructure, road, roads, hospital, hospitals, clinic,
+           development, develop, developed, economy, economic, jobs, opportunity, opportunities, community,
+           communities, wildlife, safari, conservation, mine, mines, mining, debswana, gaborone, okavango, elephant,
+           elephants, future, invest, investment]
+
+# Key moments (times are in the full stream video). Hooks are taken from the brief so they stay accurate.
+priorities:
+  - {at: "01:30", hook: "How diamonds helped transform Botswana"}
+  - {at: "03:18", hook: "Diamonds are supporting Botswana's infrastructure and education"}
+  - {at: "17:30", hook: "These students' education is funded by diamonds"}
+  - {at: "39:20", hook: "Diamonds, education and wildlife on a Botswana safari"}
+  - {at: "42:51", hook: "How diamonds are developing Botswana"}
+
+# Never include these (pad = seconds of safety margin on each side)
+exclude:
+  - {from: "00:47", to: "00:53", pad: 2, reason: "client: must not be included"}
+  - {at: "03:13", pad: 4, reason: "licence plate"}
+  - {at: "03:58", pad: 4, reason: "licence plate"}
+  - {at: "10:21", pad: 4, reason: "licence plate"}
+  - {at: "10:24", pad: 4, reason: "licence plate"}
+  - {at: "20:30", pad: 4, reason: "licence plate"}
+  - {at: "28:23", pad: 4, reason: "licence plate"}
+  - {at: "02:24", pad: 4, reason: "third-party branding"}
+  - {at: "14:42", pad: 4, reason: "third-party branding"}
+  - {at: "29:02", pad: 4, reason: "third-party branding"}
+  - {at: "36:20", pad: 4, reason: "third-party branding"}
+  - {at: "13:55", pad: 20, reason: "copyright music"}
+  - {at: "18:30", pad: 20, reason: "copyright music"}
+  - {at: "00:26", pad: 15, reason: "sensitive: war"}
+  - {at: "09:46", pad: 20, reason: "sensitive: zebra meat"}
+  - {at: "21:23", pad: 20, reason: "sensitive: cultural"}
+  - {at: "29:39", pad: 20, reason: "alcohol"}
+
+# Allowed, but never auto-posted — shows up flagged in the UI for you to check
+review:
+  - {at: "12:10", pad: 15, reason: "Diamonds Impact presentation — flag for review"}
+  - {at: "19:09", pad: 15, reason: "flag for review"}

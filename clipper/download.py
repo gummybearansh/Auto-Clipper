@@ -71,6 +71,7 @@ class Source:
     offset: float = 0.0
     chunk: int = 1
     game: str = ""
+    total_duration: float = 0.0        # length of the whole source video (all chunks)
 
     def to_json(self) -> dict:
         d = self.__dict__.copy()
@@ -253,7 +254,7 @@ def fetch_chunk(remote: Remote, idx: int, start: float, end: float, cfg: Config,
                  url=remote.url, video_path=video, audio_path=audio, work_dir=work, out_dir=out_dir,
                  duration=mi["duration"], width=mi["width"], height=mi["height"], fps=mi["fps"],
                  has_audio=mi["has_audio"], heatmap=heat, chat_path=chat_path, offset=start, chunk=idx,
-                 game=remote.game)
+                 game=remote.game, total_duration=remote.duration)
     write_json(meta_p, src.to_json())
     return src
 

@@ -154,6 +154,9 @@ def ensure_transcript(audio_path: Path, work_dir: Path, cfg: Config, duration: f
             new = [w for w in fn(samples, pa, cfg) if a <= (w["s"] + w["e"]) / 2 < b]
             cache["words"].extend(new)
             covered.append((a, b))
+            cache["words"].sort(key=lambda w: w["s"])           # save after every region: a restart/crash
+            cache["covered"] = [list(c) for c in _merge(covered)]  # never loses finished transcription
+            write_json(cache_p, cache)
             if len(todo) > 1:
                 log(f"  region {i}/{len(todo)} [{a:.0f}s–{b:.0f}s]: {len(new)} words")
         cache["words"].sort(key=lambda w: w["s"])
