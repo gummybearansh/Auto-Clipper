@@ -27,6 +27,12 @@ class AddJobs(BaseModel):
     follow: bool = True
 
 
+class Campaign(BaseModel):
+    video_id: str
+    count: int = 50
+    interval: float = 5.0
+
+
 class ClipAction(BaseModel):
     key: str
     action: str                    # approve | reject | pending | title | reveal
@@ -38,6 +44,9 @@ def create_app(cfg: Config) -> FastAPI:
     out_root.mkdir(parents=True, exist_ok=True)
     jm = JobManager(cfg)
     jm.start()
+    from .publisher import Publisher
+    pub = Publisher(cfg)
+    pub.start()
     app = FastAPI(title="auto-clipper")
     app.mount("/media", StaticFiles(directory=out_root), name="media")
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -96,6 +105,27 @@ def create_app(cfg: Config) -> FastAPI:
             except Exception as e:
                 st["limit_error"] = str(e)
         return st
+
+    @app.get("/api/publish")
+    def publish_state():
+        return pub.snapshot()
+
+    @app.post("/api/publish/start")
+    def publish_start(body: Campaign):
+        pub.start_campaign(body.video_id, max(1, min(100, body.count)), max(1.0, body.interval))
+        return pub.snapshot()
+
+    @app.post("/api/publish/{op}")
+    def publish_op(op: str):
+        if op == "pause":
+            pub.set_active(False)
+        elif op == "resume":
+            pub.set_active(True)
+        elif op == "stop":
+            pub.stop()
+        else:
+            raise HTTPException(400, "unknown op")
+        return pub.snapshot()
 
     @app.get("/api/state")
     def state():
@@ -179,6 +209,12 @@ def create_app(cfg: Config) -> FastAPI:
                 write_json(p, c)
             jm.queue_rerender(p)
             return {"rendering": True}
+        if body.action == "post":
+            from . import instagram as ig
+            if not ig.status()["connected"]:
+                raise HTTPException(400, "Instagram isn't connected — click Connect Instagram first")
+            pub.enqueue(body.key)
+            return {"queued": True}
         if body.action == "reveal":
             c = read_json(p)
             if sys.platform == "darwin":

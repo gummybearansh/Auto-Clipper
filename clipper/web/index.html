@@ -104,6 +104,18 @@
   .cacts .btn { flex: 1; text-align: center; }
   .stb { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
   .stb.approved { color: var(--green); } .stb.rejected { color: var(--red); } .stb.pending { color: var(--amber); }
+  .igb { position: absolute; top: 8px; right: 8px; font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    background: linear-gradient(135deg,#feda75,#d62976 55%,#4f5bd5); color: #fff; text-decoration: none; font-weight: 700; }
+  .btn.ig { background: linear-gradient(135deg,#d62976,#962fbf); border-color: transparent; color: #fff; font-weight: 600; }
+  .btn.ig:hover { filter: brightness(1.12); }
+  .btn.posted { color: var(--green); border-color: rgba(61,220,132,.4); text-decoration: none; text-align: center; }
+  .card.posted { border-color: rgba(214,41,118,.55); }
+  .pubbox { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
+  .pubbox .big { font-family: var(--mono); font-size: 13px; margin: 6px 0; }
+  .pubbar { height: 6px; background: var(--line2); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .pubbar span { display: block; height: 100%; background: linear-gradient(90deg,#d62976,#feda75); }
+  .hist { font-size: 11.5px; font-family: var(--mono); color: var(--mute); max-height: 130px; overflow: auto; margin-top: 8px; }
+  .hist a { color: var(--text); }
   .empty { color: var(--dim); padding: 60px 0; text-align: center; border: 1px dashed var(--line2); border-radius: 14px; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); } }
 </style>
@@ -114,8 +126,8 @@
   <div class="hstat">
     <span><span id="wdot" class="dot"></span><span id="wtxt">idle</span></span>
     <span>clips <b id="c-all">0</b></span>
-    <span>pending <b id="c-pending">0</b></span>
-    <span>approved <b id="c-approved">0</b></span>
+    <span>to post <b id="c-pending">0</b></span>
+    <span>posted <b id="c-approved">0</b></span>
     <a id="igbtn" class="btn sm" href="/auth/instagram/start" style="text-decoration:none">Connect Instagram</a>
   </div>
 </header>
@@ -136,6 +148,10 @@
       <div class="hint">Long videos are split into 30-minute chunks and processed one at a time. Clips show up as each chunk finishes.</div>
     </div>
     <div>
+      <h2>Auto-post to Instagram</h2>
+      <div class="pubbox" id="pub"></div>
+    </div>
+    <div>
       <h2>Jobs</h2>
       <div id="jobs"></div>
     </div>
@@ -144,12 +160,12 @@
     <div class="toolbar">
       <div class="tabs" id="tabs">
         <button data-f="all" class="on">All<span class="n" id="n-all"></span></button>
-        <button data-f="pending">Pending<span class="n" id="n-pending"></span></button>
-        <button data-f="approved">Approved<span class="n" id="n-approved"></span></button>
+        <button data-f="pending">Not posted<span class="n" id="n-pending"></span></button>
+        <button data-f="posted">Posted<span class="n" id="n-posted"></span></button>
         <button data-f="rejected">Rejected<span class="n" id="n-rejected"></span></button>
       </div>
       <select id="vfilter"><option value="">all videos</option></select>
-      <select id="sort"><option value="new">newest</option><option value="score">top score</option><option value="time">stream time</option></select>
+      <select id="sort"><option value="score">most viral</option><option value="new">newest</option><option value="time">stream time</option></select>
     </div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden>No clips yet. Paste a link on the left — clips appear here as they render.</div>
@@ -238,7 +254,8 @@ function cardEl(c) {
       <input class="ttl" title="Edit and press Enter to re-render">
       <div class="cmeta"><span class="sc"></span><a class="ts" target="_blank" rel="noopener"></a><span class="du"></span><span class="stb"></span></div>
       <div class="srcname"></div>
-      <div class="cacts"><button class="btn sm ok" data-a="approve">Approve</button><button class="btn sm no" data-a="reject">Reject</button>
+      <div class="cacts"><button class="btn sm ig" data-a="post">Post ▸ IG</button><a class="btn sm posted" target="_blank" rel="noopener" hidden>Posted ✓</a>
+        <button class="btn sm no" data-a="reject">Reject</button>
         <button class="btn sm" data-a="reveal" title="Show in Finder">↗</button></div>
     </div>`;
   const ttl = el.querySelector(".ttl");
@@ -250,8 +267,10 @@ function cardEl(c) {
   el.querySelector(".cacts").addEventListener("click", async e => {
     const b = e.target.closest("[data-a]"); if (!b) return;
     let a = b.dataset.a;
-    if ((a === "approve" && el._c.status === "approved") || (a === "reject" && el._c.status === "rejected")) a = "pending";
-    await api("/api/clip", {key: el.dataset.key, action: a}); pollClips();
+    if (a === "reject" && el._c.status === "rejected") a = "pending";
+    if (a === "post") { b.disabled = true; b.textContent = "Queued…"; }
+    try { await api("/api/clip", {key: el.dataset.key, action: a}); } catch (err) { alert(err); }
+    pollClips(); pollPub();
   });
   return el;
 }
@@ -271,7 +290,19 @@ function updateCard(el, c) {
   const sb = el.querySelector(".stb"); sb.textContent = c.status; sb.className = `stb ${c.status}`;
   el.querySelector(".srcname").textContent = c.src_title || "";
   el.querySelector(".srcname").title = `${c.src_title} · title via ${c.title_strategy}`;
-  el.querySelector(".cacts [data-a=approve]").textContent = c.status === "approved" ? "Approved ✓" : "Approve";
+  const ig = (c.posts || {}).instagram, pb = el.querySelector(".cacts [data-a=post]"), pd = el.querySelector(".cacts .posted");
+  el.classList.toggle("posted", !!ig);
+  pd.hidden = !ig; pb.hidden = !!ig;
+  if (ig) { pd.href = ig.permalink; pd.title = `posted ${ig.at}`; }
+  else {
+    const st = c.post_state;
+    pb.disabled = st === "queued" || st === "posting";
+    pb.textContent = st === "queued" ? "Queued…" : st === "posting" ? "Posting…" : st === "failed" ? "Retry ▸ IG" : "Post ▸ IG";
+    pb.title = c.post_error || "Publish this clip to Instagram as a Reel";
+  }
+  let badge = el.querySelector(".igb");
+  if (ig && !badge) { badge = document.createElement("a"); badge.className = "igb"; badge.target = "_blank"; badge.textContent = "IG ✓"; el.querySelector(".vwrap").append(badge); }
+  if (badge) { if (ig) badge.href = ig.permalink; else badge.remove(); }
   el.querySelector(".cacts [data-a=reject]").textContent = c.status === "rejected" ? "Rejected ✕" : "Reject";
   let busy = el.querySelector(".busy");
   const msg = c.rendering ? "re-rendering…" : (c.render_error ? "render failed" : "");
@@ -284,11 +315,13 @@ function renderClips() {
   vsel.innerHTML = `<option value="">all videos (${vids.length})</option>` + vids.map(([id, t]) => `<option value="${esc(id)}">${esc((t||id).slice(0,50))}</option>`).join("");
   vsel.value = vids.some(([id]) => id === cur) ? cur : "";
   const byV = clips.filter(c => !vsel.value || c.video_id === vsel.value);
-  for (const f of ["all","pending","approved","rejected"]) $("#n-"+f).textContent = byV.filter(c => f === "all" || c.status === f).length;
+  const isPosted = c => !!(c.posts && c.posts.instagram);
+  const match = (c, f) => f === "all" || (f === "posted" ? isPosted(c) : f === "pending" ? (!isPosted(c) && c.status !== "rejected") : c.status === f);
+  for (const f of ["all","pending","posted","rejected"]) $("#n-"+f).textContent = byV.filter(c => match(c, f)).length;
   $("#c-all").textContent = clips.length;
-  $("#c-pending").textContent = clips.filter(c => c.status === "pending").length;
-  $("#c-approved").textContent = clips.filter(c => c.status === "approved").length;
-  let shown = byV.filter(c => filter === "all" || c.status === filter);
+  $("#c-pending").textContent = clips.filter(c => !isPosted(c) && c.status !== "rejected").length;
+  $("#c-approved").textContent = clips.filter(isPosted).length;
+  let shown = byV.filter(c => match(c, filter));
   const s = $("#sort").value;
   if (s === "new") {   // newest video first, then latest chunk first, then rank
     const vt = {}; for (const c of shown) vt[c.video_id] = Math.max(vt[c.video_id] || 0, c.mtime);
@@ -312,6 +345,46 @@ $("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return
   filter = b.dataset.f; document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b)); renderClips(); };
 $("#vfilter").onchange = renderClips; $("#sort").onchange = renderClips;
 
+let pubVideos = [];
+async function pollPub() {
+  let p; try { p = await api("/api/publish"); } catch { return; }
+  const box = $("#pub"), c = p.campaign;
+  const vids = [...new Map(clips.map(x => [x.video_id, x.src_title])).entries()];
+  const cur = p.current ? `<div class="stage">▲ posting “${esc(p.current.title)}” · ${esc(p.current.stage)}</div>` : "";
+  const hist = (p.history || []).slice().reverse().slice(0, 12).map(h => h.ok
+      ? `<div>✓ <a href="${esc(h.permalink)}" target="_blank">${esc(h.title)}</a></div>`
+      : `<div style="color:var(--red)">✕ ${esc(h.title)} — ${esc((h.error||"").slice(0,80))}</div>`).join("");
+  let html;
+  if (c) {
+    const pct = Math.round(100 * c.posted / c.target), nx = c.next_in;
+    const vt = (vids.find(v => v[0] === c.video_id) || [, c.video_id])[1] || c.video_id;
+    const state = c.paused_reason === "done" ? "done ✓" : c.active ? (p.current ? "posting" : `next in ${Math.floor(nx/60)}:${String(nx%60).padStart(2,"0")}`) : (c.paused_reason || "paused");
+    html = `<div class="srcname" style="color:var(--text)">${esc(vt)}</div>
+      <div class="big">${c.posted} / ${c.target} posted · every ${Math.round(c.interval/60)} min · ${c.queue_size} ready</div>
+      <div class="pubbar"><span style="width:${pct}%"></span></div>
+      <div class="stage">${esc(state)}</div>${cur}
+      <div class="acts" style="display:flex;gap:6px;margin-top:8px">
+        ${c.paused_reason === "done" ? "" : c.active ? `<button class="btn sm" data-p="pause">Pause</button>` : `<button class="btn sm" data-p="resume">Resume</button>`}
+        <button class="btn sm no" data-p="stop">${c.paused_reason === "done" ? "Clear" : "Stop"}</button></div>`;
+  } else {
+    html = `<div class="row" style="flex-wrap:wrap;gap:8px">
+        <select id="pv" style="max-width:100%">${vids.map(([id, t]) => `<option value="${esc(id)}">${esc((t||id).slice(0,40))}</option>`).join("")}</select>
+        <label class="hint" style="margin:0">post <input id="pn" type="number" value="50" min="1" max="100"> clips</label>
+        <label class="hint" style="margin:0">every <input id="pi" type="number" value="5" min="1" max="240"> min</label>
+        <button class="btn sm ig" data-p="start">Start · most viral first</button></div>${cur}`;
+  }
+  if (box.dataset.h !== html + hist) { box.innerHTML = html + (hist ? `<div class="hist">${hist}</div>` : ""); box.dataset.h = html + hist; }
+}
+$("#pub").addEventListener("click", async e => {
+  const b = e.target.closest("[data-p]"); if (!b) return;
+  const op = b.dataset.p;
+  try {
+    if (op === "start") await api("/api/publish/start", {video_id: $("#pv").value, count: +$("#pn").value || 50, interval: +$("#pi").value || 5});
+    else { if (op === "stop" && !confirm("Stop the auto-post campaign?")) return; await api(`/api/publish/${op}`, {}); }
+  } catch (err) { alert(err); }
+  $("#pub").dataset.h = ""; pollPub();
+});
+
 async function pollIG() {
   try {
     const s = await api("/api/instagram/status"); const b = $("#igbtn");
@@ -319,7 +392,7 @@ async function pollIG() {
     else { b.textContent = "Connect Instagram"; }
   } catch {}
 }
-pollState(); pollClips(); pollIG(); setInterval(pollIG, 60000);
+pollState(); pollClips().then(pollPub); pollIG(); setInterval(pollIG, 60000); setInterval(pollPub, 2000);
 setInterval(pollState, 2000); setInterval(pollClips, 4000);
 </script>
 </body>

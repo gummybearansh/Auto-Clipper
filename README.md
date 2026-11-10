@@ -100,6 +100,8 @@ Built from heuristics only: the dominant chat reaction (`KEKW` spam → *"chat l
 - **Paste links** (several at once), set clips per 30 min, pick a layout, follow live streams
 - **Job cards** with per-chunk progress bars, a LIVE badge, logs, cancel (stops within seconds), retry and *open folder*
 - **Clip grid** with thumbnails, an inline player, scores, a ▶ deep link to the exact moment in the stream, and click-to-edit titles that re-render on Enter
+- **Post ▸ IG** on any clip publishes it as a Reel in about 30 s; posted clips get a badge linking to the Reel
+- **Auto-post campaigns**: *"post 50 clips from this stream, one every 5 minutes, most viral first"*. Strong clips from chunks rendered later still jump the queue, and it pauses itself if Instagram pushes back
 - **Connect Instagram** with one click (OAuth, permanent Page token)
 
 ---
@@ -176,7 +178,7 @@ Uses the official **Instagram API with Facebook Login**, publishing via resumabl
    { "app_id": "…", "app_secret": "…" }
    ```
 4. In the dashboard click **Connect Instagram** and tick your Page and Instagram account. You get a Page token that **never expires**; re-connect roughly every 90 days when Facebook asks.
-5. `clipper post out/<id>/chunk_01/clip_01.json`
+5. Click **Post ▸ IG** on a clip, start an **auto-post campaign** in the sidebar, or run `clipper post out/<id>/chunk_01/clip_01.json`
 
 > Credentials live in `~/.config/auto-clipper/` (chmod 600), never in the repo.
 
@@ -221,14 +223,16 @@ clipper/
   layout.py                            YuNet faces, overlay-box detection, per-clip 9:16 plan
   titles.py · captions.py · tags.py    hooks + emoji, ASS / Pillow captions, captions & hashtags
   sfx.py · render.py                   sparse SFX + ducking, ffmpeg assembly
-  export.py · cleanup.py · instagram.py  Desktop export, disk cleanup, Reels publishing
+  export.py · cleanup.py                Desktop export, disk cleanup
+  instagram.py · publisher.py          Reels publishing, one-click posts + auto-post campaigns
 CONTEXT.md                             the original design doc
 ```
 
 ## 🛣️ Roadmap
 
 - [ ] YouTube Shorts upload (Data API, once quota is approved)
-- [ ] Scheduled posting with an account warm-up ramp
+- [x] Instagram auto-post campaigns (interval, most-viral-first, self-pausing)
+- [ ] Account warm-up ramp for brand-new accounts
 - [ ] Zoom punches, emoji pops, progress bar
 - [ ] Learn the signal weights from real view counts
 
