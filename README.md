@@ -200,7 +200,7 @@ clip:  { min_len: 15, max_len: 60 }
 
 ## 🎵 Background music
 
-Clips scoring below `music.max_score` (default 2.0) get a quiet music bed, about 15 dB under the voice, which ducks further whenever anyone talks:
+Clips scoring below `music.max_score` (default 2.0) get a music bed about 9–10 dB under the voice (clearly audible, voice on top), which dips a little whenever anyone talks:
 
 | Mood | Tracks (Kevin MacLeod · incompetech.com · CC BY 4.0) |
 |---|---|

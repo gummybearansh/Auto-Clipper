@@ -92,7 +92,7 @@ def render_clip(clip: dict, clip_dir: Path, out_path: Path, cfg: Config) -> Path
         mchain = (f"[{n_in}:a]atrim=0:{dur:.3f},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,"
                   f"volume={cfg.music.volume_db}dB,afade=t=in:d=0.8,afade=t=out:st={max(0, dur - 1.5):.3f}:d=1.5")
         if cfg.music.duck:
-            fg.append(f"{mchain}[mraw];[mraw][scin]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=450[mbed]")
+            fg.append(f"{mchain}[mraw];[mraw][scin]sidechaincompress=threshold={cfg.music.duck_threshold}:ratio={cfg.music.duck_ratio}:attack=40:release=450[mbed]")
         else:
             fg.append(f"{mchain}[mbed];[scin]anullsink")
         mix.append("[mbed]")

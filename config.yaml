@@ -111,5 +111,7 @@ music:
   enabled: true
   max_score: 2.0            # clips scoring below this get quiet background music (Kevin MacLeod, CC BY 4.0)
   dir: assets/music         # `clipper music` downloads the curated tracks here
-  volume_db: -19            # quiet bed — the stream audio stays clearly audible
-  duck: true                # music dips further whenever someone talks
+  volume_db: -11            # ≈ 9–10 dB under the voice after ducking — clearly audible, voice stays on top
+  duck: true                # music dips a little whenever someone talks
+  duck_threshold: 0.06
+  duck_ratio: 2.5

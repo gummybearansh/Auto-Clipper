@@ -116,8 +116,10 @@ class MusicCfg(BaseModel):
     enabled: bool = True
     max_score: float = 2.0         # clips scoring below this get background music
     dir: str = "assets/music"
-    volume_db: float = -19.0       # music level under the clip (the stream audio stays clearly audible)
-    duck: bool = True              # dip the music further whenever someone talks
+    volume_db: float = -11.0       # music level (≈ 9–10 dB under the voice after ducking)
+    duck: bool = True              # dip the music a little whenever someone talks
+    duck_threshold: float = 0.06
+    duck_ratio: float = 2.5
 
 
 class Config(BaseModel):
