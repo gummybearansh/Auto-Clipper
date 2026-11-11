@@ -102,8 +102,11 @@ publish:
   instagram_handle: "@gummybearclips"
   youtube_channel: gummybearclip
   # credit streamers with their real handles (otherwise "🎥 name on twitch.tv/name")
-  streamer_handles: {}
-  #  jasontheween: {instagram: "@jasontheween", youtube: "@jasontheween"}
+  # verified from each streamer's official Twitch social links
+  streamer_handles:
+    jasontheween: {instagram: "@jasontheween", tiktok: "@jasontheween"}
+    marlon: {instagram: "@marlon3lg"}
+    zy0xxx: {}               # no Instagram linked on his Twitch — credited by name + twitch.tv/zy0xxx
   extra_tags: {}
   #  jasontheween: [jason]
 

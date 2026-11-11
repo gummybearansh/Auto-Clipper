@@ -129,8 +129,9 @@ def credit(rec: dict, platform: str, cfg: Config | None = None) -> str:
         where = "YouTube"
     else:
         where = ""
-    name = handle or who
-    return f"🎥 {name}" + (f" on {where}" if where else "")
+    if handle:
+        return f"🎥 Credit: {handle}" + (f" ({where})" if where else "")
+    return f"🎥 Credit: {who}" + (f" ({where})" if where else "")
 
 
 def _music_line(rec: dict) -> list[str]:
@@ -141,7 +142,8 @@ def _music_line(rec: dict) -> list[str]:
 def campaign_caption(rec: dict, camp, cfg: Config | None = None) -> str:
     """Brief: mention Marlon by name, keep it accurate and on-message, no clickbait, nothing banned."""
     creator = camp.creator or "Marlon"
-    line = f"🎥 {creator} in Botswana — where natural diamonds come from"
+    who = f"{creator} ({camp.creator_handle})" if camp.creator_handle else creator
+    line = f"🎥 Credit: {who} in Botswana — where natural diamonds come from"
     me = _cfg_get(cfg, "instagram_handle", default="@gummybearclips")
     cta = _pick(IG_CTAS, rec.get("key", rec["title"])).format(me=me)
     text = "\n".join([rec["title"], "", line, cta, "", " ".join(campaign_hashtags(rec, camp))]).strip()

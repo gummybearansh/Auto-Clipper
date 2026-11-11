@@ -44,6 +44,7 @@ class Campaign:
     slug: str
     name: str
     creator: str = ""
+    creator_handle: str = ""
     emoji: str = "💎"
     disclosure: str = ""
     hashtags: dict = field(default_factory=dict)
@@ -196,7 +197,8 @@ def load(slug: str | None) -> Campaign | None:
         return None
     d = yaml.safe_load(p.read_text()) or {}
     return Campaign(
-        slug=slug, name=d.get("name", slug), creator=d.get("creator", ""), emoji=d.get("emoji", "💎"),
+        slug=slug, name=d.get("name", slug), creator=d.get("creator", ""), creator_handle=d.get("creator_handle", ""),
+        emoji=d.get("emoji", "💎"),
         disclosure=d.get("disclosure", ""), hashtags=dict(d.get("hashtags") or {}), music=bool(d.get("music", False)),
         banned=[b.lower() for b in d.get("banned", [])], platforms=list(d.get("platforms", ["instagram", "tiktok"])),
         submit_within_min=int(d.get("submit_within_min", 0)),
@@ -341,7 +343,8 @@ def to_form(slug: str) -> dict:
     if isinstance(h, list):
         h = {"required": h}
     return {
-        "slug": slug, "name": d.get("name", slug), "creator": d.get("creator", ""), "emoji": d.get("emoji", "💎"),
+        "slug": slug, "name": d.get("name", slug), "creator": d.get("creator", ""),
+        "creator_handle": d.get("creator_handle", ""), "emoji": d.get("emoji", "💎"),
         "disclosure": d.get("disclosure", ""), "music": bool(d.get("music", False)),
         "require_keywords": bool(d.get("require_keywords", True)),
         "review_before_post": bool(d.get("review_before_post", False)),
@@ -360,7 +363,8 @@ def to_form(slug: str) -> dict:
 def save_form(f: dict) -> str:
     slug = f.get("slug") or slugify(f.get("name", ""))
     d = {
-        "name": f.get("name") or slug, "creator": f.get("creator", ""), "emoji": f.get("emoji") or "💎",
+        "name": f.get("name") or slug, "creator": f.get("creator", ""),
+        "creator_handle": (f.get("creator_handle") or "").strip(), "emoji": f.get("emoji") or "💎",
         "disclosure": (f.get("disclosure") or "").strip(),
         "platforms": [p.strip().lower() for p in re.split(r"[,\s]+", f.get("platforms") or "instagram, tiktok") if p.strip()],
         "submit_within_min": int(f.get("submit_within_min") or 0),

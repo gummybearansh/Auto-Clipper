@@ -1,6 +1,7 @@
 # Campaign: Natural Diamonds × Botswana (Marlon)
 name: Natural Diamonds — Botswana
-creator: Marlon                 # credit line: "🎥 Marlon"
+creator: Marlon                 # credit line: "🎥 Marlon (@marlon3lg)"
+creator_handle: "@marlon3lg"    # verified: linked from twitch.tv/marlon
 emoji: "💎"                     # every hook ends with this instead of 🔥/😭
 disclosure: "#ad"               # paid campaign → disclose in every caption (counts toward the 4–6 hashtags)
 platforms: [instagram, tiktok]  # campaign allows Instagram Reels + TikTok only (no YouTube)
